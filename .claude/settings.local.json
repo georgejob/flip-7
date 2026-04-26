@@ -1,7 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); cd \"c:\\\\Users\\\\georg\\\\Desktop\\\\Code\\\\flip-7\"; npm install -D jest 2>&1)"
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); cd \"c:\\\\Users\\\\georg\\\\Desktop\\\\Code\\\\flip-7\"; npm install -D jest 2>&1)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5174/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5174/src/App.jsx)",
+      "Bash(curl -s -o /dev/null -w \"App: %{http_code}\\\\n\" http://localhost:5174/src/App.jsx)",
+      "Bash(curl -s -o /dev/null -w \"Lobby: %{http_code}\\\\n\" http://localhost:5174/src/components/lobby/Lobby.jsx)",
+      "Bash(curl -s -o /dev/null -w \"WaitingRoom: %{http_code}\\\\n\" http://localhost:5174/src/components/lobby/WaitingRoom.jsx)",
+      "Bash(curl -s -o /dev/null -w \"GameScreen: %{http_code}\\\\n\" http://localhost:5174/src/components/game/GameScreen.jsx)",
+      "Bash(curl -s -o /dev/null -w \"useRoom: %{http_code}\\\\n\" http://localhost:5174/src/hooks/useRoom.js)"
     ]
   }
 }

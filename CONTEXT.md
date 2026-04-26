@@ -14,11 +14,11 @@
 
 ## Current state
 - Engine module complete and tested — pure functions, no React/Supabase dependencies, fully immutable.
-- Supabase schema designed and written to a migration file, but **not yet applied** — no real Supabase project linked yet, `.env.local` still empty, anonymous sign-in provider not yet enabled in dashboard.
+- Supabase schema designed and written to a migration file and applied. `.env.local` populated, anonymous sign-in provider enabled in dashboard.
 - Supabase client module exists but untested against a live project.
 - No UI: `src/App.jsx` is a one-line placeholder.
 - Hooks folder has empty stub files (`useGame.js`, `usePlayers.js`, `useRoom.js`).
-- **Next: Session 4 — provision the Supabase project, apply the migration, and wire hooks + UI for the lobby flow (create room / join room / render roster).**
+- **Next: Session 4 — and wire hooks + UI for the lobby flow (create room / join room / render roster).**
 
 ## Key files
 - `src/game/engine.js` — pure game logic (deck, scoring, card application, win conditions)
