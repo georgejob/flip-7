@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CARD_DIMENSIONS } from './Card'
 import { useAdaptiveLayout } from '../../hooks/useAdaptiveLayout'
@@ -15,6 +15,8 @@ const labelStyle = {
 
 export function MyHand({
   player,
+  bustedSnapshot,
+  shakeKey = 0,
   round,
   isMyTurn,
   isWaitingForOther,
@@ -26,9 +28,16 @@ export function MyHand({
   pending,
 }) {
   const cardsRef = useRef(null)
-  const numbers = player?.numbers ?? []
-  const modifiers = player?.modifiers ?? []
-  const secondChance = player?.secondChance ?? null
+  const isBusted = player?.status === 'busted'
+
+  // When busted, render the snapshot taken before the bust (engine has cleared
+  // the live hand). The snapshot is set by GameBoard.
+  const display = isBusted && bustedSnapshot
+    ? bustedSnapshot
+    : { numbers: player?.numbers ?? [], modifiers: player?.modifiers ?? [], secondChance: player?.secondChance ?? null }
+  const numbers = display.numbers
+  const modifiers = display.modifiers
+  const secondChance = display.secondChance
   const totalCards = numbers.length
 
   const { positions } = useAdaptiveLayout(cardsRef, {
@@ -37,15 +46,30 @@ export function MyHand({
     gap: 4,
   })
 
-  const score = player ? calcRoundScore(player) : 0
+  // Score for the Stay button — only meaningful while the player is active.
+  const score = player && !isBusted ? calcRoundScore(player) : 0
   const canStay = numbers.length + modifiers.length > 0
   const canAct = isMyTurn && !hasPendingAction && player?.status === 'active'
 
+  // Red-flash + shake on the cards row when shakeKey bumps.
+  const [flash, setFlash] = useState(false)
+  useEffect(() => {
+    if (!shakeKey) return
+    setFlash(true)
+    const t = setTimeout(() => setFlash(false), 500)
+    return () => clearTimeout(t)
+  }, [shakeKey])
+
+  const containerBorder = isBusted ? '2.5px solid #FECACA' : '2.5px solid #7DD3FC'
+  const containerBg = isBusted ? '#FFF5F5' : 'white'
+
   return (
-    <div
+    <motion.div
+      animate={shakeKey ? { x: [0, -8, 8, -5, 5, 0] } : { x: 0 }}
+      transition={{ duration: 0.4 }}
       style={{
-        background: 'white',
-        border: '2.5px solid #7DD3FC',
+        background: containerBg,
+        border: containerBorder,
         borderRadius: 16,
         padding: 10,
         flex: 1,
@@ -56,22 +80,42 @@ export function MyHand({
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <span style={labelStyle}>Your hand · {totalCards} cards</span>
+        <span
+          style={{
+            ...labelStyle,
+            color: isBusted ? '#7F1D1D' : labelStyle.color,
+          }}
+        >
+          Your hand · {isBusted ? 'busted' : `${totalCards} cards`}
+        </span>
         <span
           style={{
             fontFamily: "'Nunito', sans-serif",
             fontWeight: 900,
             fontSize: 12,
-            color: '#082F49',
+            color: isBusted ? '#7F1D1D' : '#082F49',
           }}
         >
-          round:{' '}
-          <span style={{ color: '#0EA5E9', fontSize: 17 }}>{round}</span>
+          {isBusted ? (
+            <span style={{ color: '#DC2626', fontSize: 14 }}>0 pts</span>
+          ) : (
+            <>
+              round:{' '}
+              <span style={{ color: '#0EA5E9', fontSize: 17 }}>{round}</span>
+            </>
+          )}
         </span>
       </div>
 
       {(modifiers.length > 0 || secondChance) && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 6,
+            flexWrap: 'wrap',
+            opacity: isBusted ? 0.5 : 1,
+          }}
+        >
           {modifiers.map((m, i) => (
             <Card key={`mod-${i}`} card={m} />
           ))}
@@ -85,17 +129,22 @@ export function MyHand({
           position: 'relative',
           height: CARD_DIMENSIONS.height + 4,
           width: '100%',
+          opacity: isBusted ? 0.5 : 1,
         }}
       >
         <AnimatePresence>
           {numbers.map((c, i) => {
             const key = `n-${i}-${c.value}`
-            const isNewest = key === newestCardKey
+            const isNewest = !isBusted && key === newestCardKey
             return (
               <motion.div
                 key={key}
                 initial={{ x: 80, opacity: 0, scale: 0.9 }}
-                animate={{ x: 0, opacity: 1, scale: 1 }}
+                animate={
+                  flash
+                    ? { x: 0, opacity: 1, scale: 1, filter: 'sepia(1) hue-rotate(-50deg) saturate(4)' }
+                    : { x: 0, opacity: 1, scale: 1, filter: 'none' }
+                }
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ type: 'spring', stiffness: 380, damping: 22 }}
                 style={{
@@ -113,7 +162,27 @@ export function MyHand({
       </div>
 
       <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>
-        {isWaitingForOther ? (
+        {isBusted ? (
+          <div
+            style={{
+              flex: 1,
+              background: '#FEE2E2',
+              border: '2px solid #FCA5A5',
+              boxShadow: '0 4px 0 #FCA5A5',
+              borderRadius: 12,
+              padding: '9px',
+              textAlign: 'center',
+              color: '#7F1D1D',
+              fontFamily: "'Nunito', sans-serif",
+              fontWeight: 900,
+              fontSize: 13,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            💥 You busted this round
+          </div>
+        ) : isWaitingForOther ? (
           <div
             style={{
               flex: 1,
@@ -179,6 +248,6 @@ export function MyHand({
           </>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

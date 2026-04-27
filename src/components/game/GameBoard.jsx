@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../../hooks/useGame'
 import { useCurrentUserId } from '../../hooks/useCurrentUserId'
 import { PhoneFrame } from '../ui/PhoneFrame'
@@ -6,19 +6,42 @@ import { OtherPlayerRow } from './OtherPlayerRow'
 import { LeaderboardRow } from './LeaderboardRow'
 import { MyHand } from './MyHand'
 import { TargetPickerModal } from './TargetPickerModal'
+import { BustModal } from './BustModal'
+import { SecondChanceModal } from './SecondChanceModal'
 import { getCurrentPlayerId, targetableForPending } from '../../game/round'
 
 const STATUS_RANK = { active: 0, stayed: 1, frozen: 2, busted: 3 }
+const SHAKE_BEFORE_MODAL_MS = 350
 
 export function GameBoard({ roomId, roomCode, onLeave }) {
   const userId = useCurrentUserId()
   const { gameState, error, pending, hit, stay, selectTarget, cancelPending } = useGame(roomId)
   const [newestCardKey, setNewestCardKey] = useState(null)
+  const [bustModal, setBustModal] = useState(null) // { card } | null
+  const [saveModal, setSaveModal] = useState(null) // { card } | null
+  const [shakeKey, setShakeKey] = useState(0) // bumped to retrigger shake on hand
+  const lastEventAtRef = useRef(0)
+  const prevHandRef = useRef(null) // most-recent active-hand snapshot for the local player
 
   const currentPlayerId = gameState ? getCurrentPlayerId(gameState) : null
   const isMyTurn = !!userId && currentPlayerId === userId
   const me = userId ? gameState?.players?.[userId] : null
   const currentPlayerName = currentPlayerId ? gameState.players[currentPlayerId]?.name : null
+
+  // Snapshot the local player's hand whenever they're active. When they bust,
+  // the engine clears their hand — we keep showing this snapshot for the rest
+  // of the round. Round reset returns them to active with empty arrays, which
+  // overwrites the snapshot cleanly.
+  useEffect(() => {
+    if (!me) return
+    if (me.status === 'active') {
+      prevHandRef.current = {
+        numbers: me.numbers,
+        modifiers: me.modifiers,
+        secondChance: me.secondChance,
+      }
+    }
+  }, [me])
 
   // Newest-card glow tracking for the local player's hand. The newest is the
   // last number card in `me.numbers`. Clear after 1.5s.
@@ -35,6 +58,35 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
     const t = setTimeout(() => setNewestCardKey(null), 1500)
     return () => clearTimeout(t)
   }, [gameState?.lastDrawn, me, userId])
+
+  // Bust / save event detection. Each `lastDrawn.at` value represents a single
+  // draw event; we track the last one we've reacted to so the same event
+  // doesn't trigger the modal twice.
+  useEffect(() => {
+    const ld = gameState?.lastDrawn
+    if (!ld || !userId) return
+    if (ld.playerId !== userId) return
+    if (ld.at === lastEventAtRef.current) return
+    lastEventAtRef.current = ld.at
+
+    if (ld.result === 'busted') {
+      // Shake the hand first, then open the modal.
+      setShakeKey((k) => k + 1)
+      const t = setTimeout(() => setBustModal({ card: ld.card }), SHAKE_BEFORE_MODAL_MS)
+      return () => clearTimeout(t)
+    }
+    if (ld.result === 'saved') {
+      setSaveModal({ card: ld.card })
+    }
+  }, [gameState?.lastDrawn, userId])
+
+  // Clean up modals when a new round starts (engine resets lastDrawn to null).
+  useEffect(() => {
+    if (!gameState?.lastDrawn) {
+      setBustModal(null)
+      setSaveModal(null)
+    }
+  }, [gameState?.lastDrawn])
 
   const sortedOthers = useMemo(() => {
     if (!gameState) return []
@@ -207,6 +259,8 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
 
       <MyHand
         player={me}
+        bustedSnapshot={me?.status === 'busted' ? prevHandRef.current : null}
+        shakeKey={shakeKey}
         round={gameState?.round ?? 1}
         isMyTurn={isMyTurn}
         isWaitingForOther={!isMyTurn}
@@ -248,6 +302,18 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
           onCancel={cancelPending}
         />
       )}
+
+      <BustModal
+        open={!!bustModal}
+        card={bustModal?.card}
+        onContinue={() => setBustModal(null)}
+      />
+
+      <SecondChanceModal
+        open={!!saveModal}
+        card={saveModal?.card}
+        onDismiss={() => setSaveModal(null)}
+      />
     </PhoneFrame>
   )
 }

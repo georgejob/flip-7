@@ -85,11 +85,16 @@ export function activePlayers(state) {
 // turn / round flow
 // ----------------------------------------------------------------------------
 
-function withDrawnCard(state, playerId, card) {
+function withDrawnCard(state, playerId, card, result = null) {
   return {
     ...state,
-    lastDrawn: { playerId, card, at: Date.now() },
+    lastDrawn: { playerId, card, at: Date.now(), result },
   }
+}
+
+function setLastDrawnResult(state, result) {
+  if (!state.lastDrawn) return state
+  return { ...state, lastDrawn: { ...state.lastDrawn, result } }
 }
 
 function setPlayer(state, playerId, player) {
@@ -207,6 +212,7 @@ function resolveNumberCard(state, playerId, card) {
   const { player: np, result, discard: dc } = applyNumberCard(player, card)
   let s = setPlayer(state, playerId, np)
   s = appendDiscard(s, dc)
+  s = setLastDrawnResult(s, result)
 
   if (result === NUMBER_RESULT.BUSTED) {
     return passTurnOrEndRound(s)
