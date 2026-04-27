@@ -11,25 +11,34 @@
 - **Session 1** — project scaffolding. Vite + React set up, Tailwind CSS v4 wired into vite.config.js, Supabase client installed, folder structure created (`components/{ui,game,lobby}`, `game/`, `hooks/`, `lib/`).
 - **Session 2** — pure game engine. All logic in `src/game/engine.js`: deck building, shuffle (seedable), draw-with-reshuffle, number/modifier/action card application, Second Chance handling, Stay/Freeze banking, scoring (sum → ×2 → flat → Flip 7 bonus), win conditions. 56 passing Jest tests in `src/game/engine.test.js`.
 - **Session 3** — Supabase schema + client module. Migration at `supabase/migrations/20260422000000_initial_schema.sql` defines two tables (`rooms`, `players`), RLS policies, two `SECURITY DEFINER` RPCs (`create_room`, `join_room`), and enables Realtime. Client wrapper at `src/game/supabase.js` exports `createRoom`, `joinRoom`, `getGameState`, `updateGameState`, and `subscribeToRoom`. Auth via anonymous JWTs (`signInAnonymously`) — requires enabling anonymous sign-in in Supabase dashboard.
+- **Session 4** — lobby flow UI. Full three-screen flow: Lobby → WaitingRoom → GameScreen placeholder. Routing via React state in `App.jsx` (no router). Google Fonts (Fredoka One + Nunito), phone-frame layout, pastel backdrop decorations, card fan. `useRoomSession` hook (single realtime channel handles both `rooms` + `players` changes). Host can start game; all clients auto-navigate when `rooms.status` flips to `playing`. Two-client tested in browser.
 
 ## Current state
 - Engine module complete and tested — pure functions, no React/Supabase dependencies, fully immutable.
-- Supabase schema designed and written to a migration file and applied. `.env.local` populated, anonymous sign-in provider enabled in dashboard.
-- Supabase client module exists but untested against a live project.
-- No UI: `src/App.jsx` is a one-line placeholder.
-- Hooks folder has empty stub files (`useGame.js`, `usePlayers.js`, `useRoom.js`).
-- **Next: Session 4 — and wire hooks + UI for the lobby flow (create room / join room / render roster).**
+- Supabase schema applied and working against a live project. `.env.local` populated, anonymous sign-in enabled.
+- Full lobby flow live and tested in the browser (two-client verified).
+- **Next: Session 5 — build the actual game screen (card drawing, turn logic, scoring display).**
 
 ## Key files
 - `src/game/engine.js` — pure game logic (deck, scoring, card application, win conditions)
 - `src/game/engine.test.js` — Jest unit tests (56 passing)
-- `src/game/supabase.js` — room lifecycle + realtime subscription helpers (uses `createRoom`/`joinRoom` RPCs)
-- `src/lib/supabase.js` — Supabase client singleton, needs env vars
+- `src/game/supabase.js` — room lifecycle + realtime subscription helpers (`createRoom`, `joinRoom`, `getGameState`, `updateGameState`, `subscribeToRoom`)
+- `src/lib/supabase.js` — Supabase client singleton (reads VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY)
+- `src/hooks/useRoomSession.js` — single-channel realtime hook returning `{ room, players, loading, error }`
+- `src/hooks/useGame.js` — stub, next session
+- `src/App.jsx` — screen state machine: `lobby → waiting → game`; wraps all screens in `ErrorBoundary`
+- `src/components/lobby/Lobby.jsx` — name input, create / join room, card fan decoration
+- `src/components/lobby/WaitingRoom.jsx` — room code + copy, live player list, tip box, host start / guest wait
+- `src/components/lobby/CardFan.jsx` — 5-card fanned decoration
+- `src/components/game/GameScreen.jsx` — placeholder (next session)
+- `src/components/ui/PhoneFrame.jsx` — phone-shaped container with backdrop
+- `src/components/ui/Backdrop.jsx` — pastel circles, confetti, sparkles, SVG swirls
+- `src/components/ui/Logo.jsx` — "Flip 7" logotype with dual text-shadow
+- `src/components/ui/ErrorBoundary.jsx` — catches render errors, shows them on-screen
 - `supabase/migrations/20260422000000_initial_schema.sql` — tables, RLS policies, RPCs, realtime publication
-- `src/App.jsx` — placeholder React entry
-- `jest.config.js` — Jest config, empty `transform` for native ESM
-- `vite.config.js` — React + Tailwind plugins registered
-- `.env.local` — Supabase URL + anon key (empty, gitignored)
+- `jest.config.js` — Jest config, native ESM
+- `vite.config.js` — React + Tailwind plugins
+- `.env.local` — Supabase URL + anon key (gitignored)
 
 ## Data model
 - `rooms(id, code, host_id, status, game_state jsonb, created_at, updated_at)` — one row per game room. `game_state` holds the whole serialized engine state (deck, discard, per-player round state, current turn, etc.). `status` ∈ {`lobby`, `playing`, `finished`}. `code` is a 4-char uppercase alphanumeric, unique.
