@@ -13,3 +13,6 @@ after session 5:
 
 - when busting, add most recent card to hand to show which card busted
 -last active player of round the modal isn't showing up because the new round is starting
+-it seems discard deck is getting reshuffled back into main deck after each round. i only want discard to get shuffled back in after the main deck is exhausted
+-on freeze player selection, show progress bar to give better insight to the local player on who to freeze
+-sometimes drawing 3 doesn't draw the full 3???

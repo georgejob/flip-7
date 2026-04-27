@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../../hooks/useGame'
 import { useCurrentUserId } from '../../hooks/useCurrentUserId'
 import { PhoneFrame } from '../ui/PhoneFrame'
@@ -12,10 +12,21 @@ import { getCurrentPlayerId, targetableForPending } from '../../game/round'
 
 const STATUS_RANK = { active: 0, stayed: 1, frozen: 2, busted: 3 }
 const SHAKE_BEFORE_MODAL_MS = 350
+const ROUND_END_SAFETY_MS = 10000
 
 export function GameBoard({ roomId, roomCode, onLeave }) {
   const userId = useCurrentUserId()
-  const { gameState, error, pending, hit, stay, selectTarget, cancelPending } = useGame(roomId)
+  const {
+    gameState,
+    error,
+    pending,
+    pendingRoundEnd,
+    hit,
+    stay,
+    selectTarget,
+    cancelPending,
+    flushPendingRoundEnd,
+  } = useGame(roomId, userId)
   const [newestCardKey, setNewestCardKey] = useState(null)
   const [bustModal, setBustModal] = useState(null) // { card } | null
   const [saveModal, setSaveModal] = useState(null) // { card } | null
@@ -87,6 +98,43 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
       setSaveModal(null)
     }
   }, [gameState?.lastDrawn])
+
+  // Safety timeout: if the local player busted as last-active and never
+  // dismisses the bust modal, auto-flush the deferred round-end so other
+  // clients don't wait forever.
+  useEffect(() => {
+    if (!bustModal || !pendingRoundEnd) return
+    const t = setTimeout(() => {
+      setBustModal(null)
+      flushPendingRoundEnd()
+    }, ROUND_END_SAFETY_MS)
+    return () => clearTimeout(t)
+  }, [bustModal, pendingRoundEnd, flushPendingRoundEnd])
+
+  const handleBustContinue = useCallback(() => {
+    setBustModal(null)
+    if (pendingRoundEnd) {
+      // Fire-and-forget; the local state update arrives via the realtime
+      // subscription. Errors surface through useGame's `error`.
+      flushPendingRoundEnd()
+    }
+  }, [pendingRoundEnd, flushPendingRoundEnd])
+
+  // Build the displayed hand for the busted state: pre-bust hand snapshot +
+  // the duplicate card that caused the bust, so the player can see the card
+  // sitting in their hand. The duplicate gets a persistent red glow.
+  const bustingDisplayHand = useMemo(() => {
+    if (me?.status !== 'busted' || !prevHandRef.current) return null
+    const dup = gameState?.lastDrawn?.card
+    const base = prevHandRef.current.numbers ?? []
+    const numbers = dup?.type === 'number' ? [...base, dup] : base
+    return {
+      numbers,
+      modifiers: prevHandRef.current.modifiers ?? [],
+      secondChance: prevHandRef.current.secondChance ?? null,
+      bustingIndex: dup?.type === 'number' ? base.length : -1,
+    }
+  }, [me?.status, gameState?.lastDrawn])
 
   const sortedOthers = useMemo(() => {
     if (!gameState) return []
@@ -259,7 +307,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
 
       <MyHand
         player={me}
-        bustedSnapshot={me?.status === 'busted' ? prevHandRef.current : null}
+        bustedSnapshot={bustingDisplayHand}
         shakeKey={shakeKey}
         round={gameState?.round ?? 1}
         isMyTurn={isMyTurn}
@@ -306,7 +354,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
       <BustModal
         open={!!bustModal}
         card={bustModal?.card}
-        onContinue={() => setBustModal(null)}
+        onContinue={handleBustContinue}
       />
 
       <SecondChanceModal

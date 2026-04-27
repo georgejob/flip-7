@@ -31,13 +31,15 @@ export function MyHand({
   const isBusted = player?.status === 'busted'
 
   // When busted, render the snapshot taken before the bust (engine has cleared
-  // the live hand). The snapshot is set by GameBoard.
+  // the live hand) plus the duplicate that caused the bust at the end. The
+  // snapshot is computed in GameBoard.
   const display = isBusted && bustedSnapshot
     ? bustedSnapshot
-    : { numbers: player?.numbers ?? [], modifiers: player?.modifiers ?? [], secondChance: player?.secondChance ?? null }
+    : { numbers: player?.numbers ?? [], modifiers: player?.modifiers ?? [], secondChance: player?.secondChance ?? null, bustingIndex: -1 }
   const numbers = display.numbers
   const modifiers = display.modifiers
   const secondChance = display.secondChance
+  const bustingIndex = display.bustingIndex ?? -1
   const totalCards = numbers.length
 
   const { positions } = useAdaptiveLayout(cardsRef, {
@@ -129,21 +131,28 @@ export function MyHand({
           position: 'relative',
           height: CARD_DIMENSIONS.height + 4,
           width: '100%',
-          opacity: isBusted ? 0.5 : 1,
         }}
       >
         <AnimatePresence>
           {numbers.map((c, i) => {
             const key = `n-${i}-${c.value}`
+            const isBusting = isBusted && i === bustingIndex
             const isNewest = !isBusted && key === newestCardKey
+            const glow = isBusting ? 'red' : isNewest
+            // The dup card sits on top in the busted state so the red glow
+            // is fully visible above neighbouring cards.
+            const z = isBusting ? 200 : isNewest ? 100 : i
+            // Faded for the rest of the hand, but the busting card stays
+            // fully opaque so it remains visually identifiable.
+            const cardOpacity = isBusted && !isBusting ? 0.5 : 1
             return (
               <motion.div
                 key={key}
                 initial={{ x: 80, opacity: 0, scale: 0.9 }}
                 animate={
                   flash
-                    ? { x: 0, opacity: 1, scale: 1, filter: 'sepia(1) hue-rotate(-50deg) saturate(4)' }
-                    : { x: 0, opacity: 1, scale: 1, filter: 'none' }
+                    ? { x: 0, opacity: cardOpacity, scale: 1, filter: 'sepia(1) hue-rotate(-50deg) saturate(4)' }
+                    : { x: 0, opacity: cardOpacity, scale: 1, filter: 'none' }
                 }
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ type: 'spring', stiffness: 380, damping: 22 }}
@@ -151,10 +160,10 @@ export function MyHand({
                   position: 'absolute',
                   left: positions[i] ?? 0,
                   top: 0,
-                  zIndex: isNewest ? 100 : i,
+                  zIndex: z,
                 }}
               >
-                <Card card={c} glow={isNewest} />
+                <Card card={c} glow={glow} />
               </motion.div>
             )
           })}

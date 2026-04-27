@@ -178,10 +178,19 @@ function endRound(state) {
 // hit / stay
 // ----------------------------------------------------------------------------
 
-// The current player draws one card. Returns the new state.
-// If the drawn card requires a target choice (Freeze / Flip Three),
-// state.pendingAction is set and the caller must call selectTarget.
+// Full draw: applies the drawn card AND any post-draw transitions
+// (turn advance / round end). Use this for the standard call site.
 export function hit(state) {
+  const intermediate = hitDeferred(state)
+  if (intermediate === state) return state
+  return flushPostDraw(intermediate)
+}
+
+// Deferred variant: applies the drawn card and updates the player, but does
+// NOT advance the turn or end the round. Caller must invoke `flushPostDraw`
+// to commit the post-draw transitions. Used by the UI to hold onto a busted
+// state long enough to show the bust modal before the round ends.
+export function hitDeferred(state) {
   if (state.pendingAction) return state
   const playerId = getCurrentPlayerId(state)
   if (!playerId) return state
@@ -195,7 +204,7 @@ export function hit(state) {
   newState = withDrawnCard(newState, playerId, card)
 
   if (card.type === CARD_TYPE.NUMBER) {
-    return resolveNumberCard(newState, playerId, card)
+    return resolveNumberCardDeferred(newState, playerId, card)
   }
   if (card.type === CARD_TYPE.MODIFIER) {
     const { player: np } = applyModifierCard(player, card)
@@ -207,18 +216,37 @@ export function hit(state) {
   return newState
 }
 
-function resolveNumberCard(state, playerId, card) {
+// Apply post-draw transitions (turn advance, round end) based on
+// `lastDrawn.result`. No-op for results that don't end a turn.
+export function flushPostDraw(state) {
+  const r = state.lastDrawn?.result
+  if (r === NUMBER_RESULT.BUSTED) return passTurnOrEndRound(state)
+  if (r === NUMBER_RESULT.FLIP_7) return endRound(state)
+  return state
+}
+
+// Returns true when the *current* state would end the round if flushed.
+// Used by the UI to decide whether to defer the round-end transition behind
+// the bust modal acknowledgment.
+export function wouldEndRound(state) {
+  const r = state.lastDrawn?.result
+  if (r === NUMBER_RESULT.FLIP_7) return true
+  if (r === NUMBER_RESULT.BUSTED) {
+    return activePlayers(state).length === 0
+  }
+  return false
+}
+
+function resolveNumberCardDeferred(state, playerId, card) {
   const player = state.players[playerId]
   const { player: np, result, discard: dc } = applyNumberCard(player, card)
   let s = setPlayer(state, playerId, np)
   s = appendDiscard(s, dc)
   s = setLastDrawnResult(s, result)
 
-  if (result === NUMBER_RESULT.BUSTED) {
-    return passTurnOrEndRound(s)
-  }
+  // Flip 7 banks the +15 bonus immediately on the player so the leaderboard
+  // updates, but the actual round-end transition is deferred to flushPostDraw.
   if (result === NUMBER_RESULT.FLIP_7) {
-    // The Flip 7 player banks here so the +15 bonus is applied to their total.
     const score = calcRoundScore(np)
     const cardsBack = [...np.numbers, ...np.modifiers]
     if (np.secondChance) cardsBack.push(np.secondChance)
@@ -231,9 +259,7 @@ function resolveNumberCard(state, playerId, card) {
       totalScore: np.totalScore + score,
     })
     s = appendDiscard(s, cardsBack)
-    return endRound(s)
   }
-  // ADDED or SAVED — turn continues
   return s
 }
 
@@ -334,7 +360,8 @@ export function selectTarget(state, targetId) {
       s = { ...s, deck, discard }
       s = withDrawnCard(s, targetId, drawn)
       if (drawn.type === CARD_TYPE.NUMBER) {
-        s = resolveNumberCard(s, targetId, drawn)
+        s = resolveNumberCardDeferred(s, targetId, drawn)
+        s = flushPostDraw(s)
         if (s.status !== 'playing') return s
       } else if (drawn.type === CARD_TYPE.MODIFIER) {
         const { player: np } = applyModifierCard(target, drawn)

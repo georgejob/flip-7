@@ -7,11 +7,19 @@ import * as round from '../game/round'
 // action callbacks. Each action computes the new state locally (pure round
 // functions) and writes it back via updateGameState — Supabase Realtime
 // echoes the change to every other client.
-export function useGame(roomId) {
+//
+// When the *local* player busts and that bust would end the round, the hook
+// writes only the post-card / pre-end state ("paused") and exposes
+// `pendingRoundEnd: true`. The UI keeps the bust modal up. When the user
+// dismisses the modal, the UI calls `flushPendingRoundEnd()` to commit the
+// round-end transition. A safety timeout in the UI also calls flush after
+// 10s in case the user never acknowledges.
+export function useGame(roomId, userId) {
   const [gameState, setGameState] = useState(null)
   const [room, setRoom] = useState(null)
   const [error, setError] = useState(null)
   const [pending, setPending] = useState(false)
+  const [pendingRoundEnd, setPendingRoundEnd] = useState(false)
 
   useEffect(() => {
     if (!roomId) return
@@ -47,8 +55,19 @@ export function useGame(roomId) {
     }
   }, [roomId])
 
-  // Wraps a state-mutator from round.js. Reads the latest game_state from
-  // a callback to avoid races.
+  // Writes a fully-computed next state to Supabase and updates local state.
+  const writeState = useCallback(
+    async (next) => {
+      if (!roomId) return
+      const status = next.status === 'finished' ? 'finished' : 'playing'
+      await updateGameState(roomId, next, { status })
+      setGameState(next)
+    },
+    [roomId],
+  )
+
+  // Wraps a state-mutator from round.js. Used for actions that always commit
+  // immediately (stay, selectTarget, cancelPending).
   const apply = useCallback(
     async (mutator) => {
       if (!roomId || pending) return
@@ -57,9 +76,7 @@ export function useGame(roomId) {
       try {
         const next = mutator(gameState)
         if (!next || next === gameState) return
-        const status = next.status === 'finished' ? 'finished' : 'playing'
-        await updateGameState(roomId, next, { status })
-        setGameState(next)
+        await writeState(next)
       } catch (err) {
         console.error('useGame: action failed', err)
         setError(err?.message ?? 'Action failed')
@@ -67,10 +84,67 @@ export function useGame(roomId) {
         setPending(false)
       }
     },
-    [roomId, gameState, pending],
+    [roomId, gameState, pending, writeState],
   )
 
-  const hit = useCallback(() => apply(round.hit), [apply])
+  const hit = useCallback(async () => {
+    if (!roomId || pending || !gameState) return
+    setPending(true)
+    setError(null)
+    try {
+      const intermediate = round.hitDeferred(gameState)
+      if (intermediate === gameState) return
+
+      const localBust =
+        userId &&
+        intermediate.lastDrawn?.playerId === userId &&
+        intermediate.lastDrawn?.result === 'busted'
+      const ending = round.wouldEndRound(intermediate)
+
+      if (localBust && ending) {
+        // Defer the round-end transition; UI will flush after the player
+        // dismisses the bust modal (or the 10s safety timer fires).
+        await writeState(intermediate)
+        setPendingRoundEnd(true)
+      } else {
+        const next = round.flushPostDraw(intermediate)
+        await writeState(next)
+      }
+    } catch (err) {
+      console.error('useGame: hit failed', err)
+      setError(err?.message ?? 'Hit failed')
+    } finally {
+      setPending(false)
+    }
+  }, [roomId, gameState, pending, userId, writeState])
+
+  // Commit the deferred round-end. Called by the bust modal's Continue
+  // button and by the UI's safety timeout.
+  const flushPendingRoundEnd = useCallback(async () => {
+    if (!roomId || !gameState || !pendingRoundEnd) return
+    setPending(true)
+    try {
+      const next = round.flushPostDraw(gameState)
+      await writeState(next)
+      setPendingRoundEnd(false)
+    } catch (err) {
+      console.error('useGame: flushPendingRoundEnd failed', err)
+      setError(err?.message ?? 'Failed to advance round')
+    } finally {
+      setPending(false)
+    }
+  }, [roomId, gameState, pendingRoundEnd, writeState])
+
+  // If the round we deferred has *already* been advanced by another client
+  // (or we left and rejoined), clear the local pending flag so we don't
+  // double-flush on Continue.
+  useEffect(() => {
+    if (!pendingRoundEnd || !gameState) return
+    if (!round.wouldEndRound(gameState)) {
+      setPendingRoundEnd(false)
+    }
+  }, [gameState, pendingRoundEnd])
+
   const stay = useCallback(() => apply(round.stay), [apply])
   const selectTarget = useCallback(
     (targetId) => apply((s) => round.selectTarget(s, targetId)),
@@ -83,10 +157,12 @@ export function useGame(roomId) {
     gameState,
     error,
     pending,
+    pendingRoundEnd,
     hit,
     stay,
     selectTarget,
     cancelPending,
+    flushPendingRoundEnd,
   }
 }
 

@@ -3,7 +3,14 @@ import { paletteForValue } from './cardColors'
 const CARD_W = 38
 const CARD_H = 54
 
-const GLOW = '0 0 0 3px rgba(14, 165, 233, 0.35), 0 4px 8px rgba(14, 165, 233, 0.25)'
+const BLUE_GLOW = '0 0 0 3px rgba(14, 165, 233, 0.35), 0 4px 8px rgba(14, 165, 233, 0.25)'
+const RED_GLOW = '0 0 0 3px rgba(239, 68, 68, 0.4), 0 4px 8px rgba(239, 68, 68, 0.25)'
+
+function glowShadow(glow) {
+  if (glow === 'red') return RED_GLOW
+  if (glow) return BLUE_GLOW
+  return null
+}
 
 export function Card({ card, glow = false, style }) {
   if (!card) return null
@@ -26,7 +33,7 @@ function NumberCard({ value, glow, style }) {
         borderRadius: 7,
         border: `2.5px solid ${p.border}`,
         background: p.bg,
-        boxShadow: glow ? GLOW : `0 2px 0 ${p.border}`,
+        boxShadow: glowShadow(glow) ?? `0 2px 0 ${p.border}`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -67,7 +74,7 @@ function ModifierCard({ card, glow, style }) {
         background: isX2
           ? 'linear-gradient(180deg, #FCD34D, #FBBF24)'
           : 'linear-gradient(180deg, #FED7AA, #FDBA74)',
-        boxShadow: glow ? GLOW : isX2 ? '0 2px 0 #D97706' : '0 2px 0 #EA580C',
+        boxShadow: glowShadow(glow) ?? (isX2 ? '0 2px 0 #D97706' : '0 2px 0 #EA580C'),
         color: isX2 ? '#78350F' : '#7C2D12',
         fontFamily: "'Nunito', sans-serif",
         fontWeight: 900,
@@ -95,7 +102,7 @@ function ActionCard({ card, glow, style }) {
           borderRadius: 8,
           border: '2px dashed #10B981',
           background: 'linear-gradient(180deg, #D1FAE5, #A7F3D0)',
-          boxShadow: glow ? GLOW : '0 2px 0 #059669',
+          boxShadow: glowShadow(glow) ?? '0 2px 0 #059669',
           color: '#064E3B',
           fontFamily: "'Nunito', sans-serif",
           fontWeight: 900,
@@ -122,7 +129,7 @@ function ActionCard({ card, glow, style }) {
         borderRadius: 8,
         border: '2px dashed #6366F1',
         background: 'linear-gradient(180deg, #E0E7FF, #C7D2FE)',
-        boxShadow: glow ? GLOW : '0 2px 0 #4F46E5',
+        boxShadow: glowShadow(glow) ?? '0 2px 0 #4F46E5',
         color: '#312E81',
         fontFamily: "'Nunito', sans-serif",
         fontWeight: 900,

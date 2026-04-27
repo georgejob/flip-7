@@ -21,7 +21,8 @@
       "Bash(curl -s -o /dev/null -w \"Card: %{http_code}\\\\n\" http://localhost:5174/src/components/game/Card.jsx)",
       "Bash(curl -s -o /dev/null -w \"BustModal: %{http_code}\\\\n\" http://localhost:5174/src/components/game/BustModal.jsx)",
       "Bash(curl -s -o /dev/null -w \"SecondChanceModal: %{http_code}\\\\n\" http://localhost:5174/src/components/game/SecondChanceModal.jsx)",
-      "Bash(curl -s -o /dev/null -w \"round.js: %{http_code}\\\\n\" http://localhost:5174/src/game/round.js)"
+      "Bash(curl -s -o /dev/null -w \"round.js: %{http_code}\\\\n\" http://localhost:5174/src/game/round.js)",
+      "Bash(curl -s -o /dev/null -w \"useGame: %{http_code}\\\\n\" http://localhost:5174/src/hooks/useGame.js)"
     ]
   }
 }
