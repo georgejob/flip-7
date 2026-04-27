@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRoomSession } from '../../hooks/useRoomSession'
-import { supabase } from '../../lib/supabase'
+import { startGame } from '../../hooks/useGame'
 import { PhoneFrame } from '../ui/PhoneFrame'
 import { Logo } from '../ui/Logo'
 
@@ -108,14 +108,14 @@ export function WaitingRoom({ roomId, roomCode, isHost, onLeave, onStart }) {
 
   async function handleStart() {
     if (!isHost || starting) return
+    if (!players || players.length === 0) {
+      setActionError('Cannot start an empty room')
+      return
+    }
     setStarting(true)
     setActionError(null)
     try {
-      const { error } = await supabase
-        .from('rooms')
-        .update({ status: 'playing' })
-        .eq('id', roomId)
-      if (error) throw error
+      await startGame(roomId, players)
     } catch (err) {
       console.error(err)
       setActionError(err.message ?? 'Could not start game')

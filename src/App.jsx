@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Lobby } from './components/lobby/Lobby'
 import { WaitingRoom } from './components/lobby/WaitingRoom'
-import { GameScreen } from './components/game/GameScreen'
+import { GameBoard } from './components/game/GameBoard'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 
 export default function App() {
@@ -34,7 +34,7 @@ export default function App() {
       />
     )
   } else if (screen === 'game' && session) {
-    content = <GameScreen roomCode={session.code} onLeave={handleLeave} />
+    content = <GameBoard roomId={session.roomId} roomCode={session.code} onLeave={handleLeave} />
   } else {
     content = <Lobby onEnterRoom={handleEnterRoom} />
   }
