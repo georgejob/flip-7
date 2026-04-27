@@ -1,0 +1,4 @@
+after session 4:
+-remove round indicator and turn indicator at top to save space
+-glow around current players turn at top
+-top corner: cards remaining in deck before reshuffle
