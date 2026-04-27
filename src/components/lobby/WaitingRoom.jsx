@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useRoom } from '../../hooks/useRoom'
-import { usePlayers } from '../../hooks/usePlayers'
+import { useRoomSession } from '../../hooks/useRoomSession'
 import { supabase } from '../../lib/supabase'
 import { PhoneFrame } from '../ui/PhoneFrame'
 import { Logo } from '../ui/Logo'
@@ -81,11 +80,11 @@ const badgeStyle = {
 }
 
 export function WaitingRoom({ roomId, roomCode, isHost, onLeave, onStart }) {
-  const { room } = useRoom(roomId)
-  const { players } = usePlayers(roomId)
+  const { room, players, loading, error: sessionError } = useRoomSession(roomId)
   const [copied, setCopied] = useState(false)
   const [starting, setStarting] = useState(false)
-  const [error, setError] = useState(null)
+  const [actionError, setActionError] = useState(null)
+  const error = actionError ?? sessionError
 
   const tip = useMemo(() => TIPS[Math.floor(Math.random() * TIPS.length)], [])
 
@@ -103,14 +102,14 @@ export function WaitingRoom({ roomId, roomCode, isHost, onLeave, onStart }) {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      setError('Copy failed — select the code manually')
+      setActionError('Copy failed — select the code manually')
     }
   }
 
   async function handleStart() {
     if (!isHost || starting) return
     setStarting(true)
-    setError(null)
+    setActionError(null)
     try {
       const { error } = await supabase
         .from('rooms')
@@ -119,7 +118,7 @@ export function WaitingRoom({ roomId, roomCode, isHost, onLeave, onStart }) {
       if (error) throw error
     } catch (err) {
       console.error(err)
-      setError(err.message ?? 'Could not start game')
+      setActionError(err.message ?? 'Could not start game')
       setStarting(false)
     }
   }
@@ -146,7 +145,7 @@ export function WaitingRoom({ roomId, roomCode, isHost, onLeave, onStart }) {
         >
           ← Leave
         </button>
-        <span style={badgeStyle}>Lobby</span>
+        <span style={badgeStyle}>{loading ? 'Connecting…' : 'Lobby'}</span>
       </div>
 
       <div style={{ textAlign: 'center', marginBottom: 18 }}>

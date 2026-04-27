@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { Lobby } from './components/lobby/Lobby'
 import { WaitingRoom } from './components/lobby/WaitingRoom'
 import { GameScreen } from './components/game/GameScreen'
+import { ErrorBoundary } from './components/ui/ErrorBoundary'
 
 export default function App() {
   const [screen, setScreen] = useState('lobby')
@@ -21,8 +22,9 @@ export default function App() {
     setScreen('lobby')
   }, [])
 
+  let content
   if (screen === 'waiting' && session) {
-    return (
+    content = (
       <WaitingRoom
         roomId={session.roomId}
         roomCode={session.code}
@@ -31,11 +33,11 @@ export default function App() {
         onLeave={handleLeave}
       />
     )
+  } else if (screen === 'game' && session) {
+    content = <GameScreen roomCode={session.code} onLeave={handleLeave} />
+  } else {
+    content = <Lobby onEnterRoom={handleEnterRoom} />
   }
 
-  if (screen === 'game' && session) {
-    return <GameScreen roomCode={session.code} onLeave={handleLeave} />
-  }
-
-  return <Lobby onEnterRoom={handleEnterRoom} />
+  return <ErrorBoundary>{content}</ErrorBoundary>
 }
