@@ -152,6 +152,25 @@ export function useGame(roomId, userId) {
   )
   const cancelPending = useCallback(() => apply(round.cancelPending), [apply])
 
+  // During the initial-deal phase the dealer auto-deals one card to each
+  // active player in turn order. Each client that is the current player
+  // fires its own `hit` after a short delay so the deal feels like a real
+  // round-robin rather than a single batched state update. Other clients
+  // do nothing — their turn never matches, so the effect short-circuits.
+  useEffect(() => {
+    if (!gameState || !userId) return
+    if (gameState.phase !== 'initialDeal') return
+    if (gameState.pendingAction) return
+    if (gameState.status !== 'playing') return
+    const currentId = gameState.playerOrder?.[gameState.turnIndex]
+    if (currentId !== userId) return
+    if (pending) return
+    const t = setTimeout(() => {
+      hit()
+    }, 700)
+    return () => clearTimeout(t)
+  }, [gameState, userId, pending, hit])
+
   return {
     room,
     gameState,

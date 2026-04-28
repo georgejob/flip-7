@@ -5,15 +5,18 @@
 // game_state shape (stored in rooms.game_state jsonb):
 // {
 //   round: number,
-//   turnIndex: number,                    // index into playerOrder
-//   playerOrder: string[],                // user_ids in seat order
-//   players: { [user_id]: PlayerState },  // engine-shaped players keyed by user_id
+//   phase: 'initialDeal' | 'play',         // initial-deal phase auto-deals one
+//                                          // card to each player before Hit/Stay
+//   initialDealtIds: string[],             // ids dealt their initial card (this round)
+//   turnIndex: number,                     // index into playerOrder
+//   playerOrder: string[],                 // user_ids in seat order
+//   players: { [user_id]: PlayerState },   // engine-shaped players keyed by user_id
 //   deck: Card[],
 //   discard: Card[],
 //   pendingAction: null | { card, fromPlayerId },
 //   lastDrawn: null | { playerId, card, at }, // at = ms timestamp for glow
 //   status: 'playing' | 'finished',
-//   winner: null | string,                // user_id
+//   winner: null | string,                 // user_id
 // }
 
 import {
@@ -54,6 +57,8 @@ export function initGameState(membership) {
   }
   return {
     round: 1,
+    phase: 'initialDeal',
+    initialDealtIds: [],
     turnIndex: 0,
     playerOrder,
     players,
@@ -127,6 +132,48 @@ function passTurnOrEndRound(state) {
   return endRound(state)
 }
 
+// Initial-deal advancement: mark the current player as dealt, then move to
+// the next active player who hasn't been dealt yet. When every currently-
+// active player has had their initial card, transition to 'play' phase.
+function advanceInitialDeal(state) {
+  const currentId = state.playerOrder[state.turnIndex]
+  const dealtIds = state.initialDealtIds.includes(currentId)
+    ? state.initialDealtIds
+    : [...state.initialDealtIds, currentId]
+
+  const order = state.playerOrder
+  let next = state.turnIndex
+  for (let i = 0; i < order.length; i++) {
+    next = (next + 1) % order.length
+    const p = state.players[order[next]]
+    if (p.status === PLAYER_STATUS.ACTIVE && !dealtIds.includes(order[next])) {
+      return { ...state, initialDealtIds: dealtIds, turnIndex: next }
+    }
+  }
+
+  // Every active player has been dealt — switch to play phase, starting
+  // with the first active player in seat order.
+  const firstActive = order.findIndex(
+    (id) => state.players[id].status === PLAYER_STATUS.ACTIVE,
+  )
+  if (firstActive === -1) return endRound({ ...state, initialDealtIds: dealtIds })
+  return {
+    ...state,
+    phase: 'play',
+    initialDealtIds: dealtIds,
+    turnIndex: firstActive,
+  }
+}
+
+// Single dispatcher for "the active player just finished a turn-consuming
+// action". Routes to initial-deal or normal play advancement based on phase.
+function advanceAfterAction(state) {
+  if (state.pendingAction) return state
+  if (state.status === 'finished') return state
+  if (state.phase === 'initialDeal') return advanceInitialDeal(state)
+  return passTurnOrEndRound(state)
+}
+
 // End the round. Active players bank what's in their hand.
 // Stayed/frozen already banked. Then either declare a winner or start next round.
 function endRound(state) {
@@ -167,6 +214,8 @@ function endRound(state) {
     ...state,
     players: resetPlayers,
     round: state.round + 1,
+    phase: 'initialDeal',
+    initialDealtIds: [],
     turnIndex: 0,
     discard: newDiscard,
     pendingAction: null,
@@ -203,12 +252,12 @@ export function hitDeferred(state) {
     // Deck and discard both empty — forced stay for the drawing player.
     if (player.numbers.length === 0 && player.modifiers.length === 0) {
       // Nothing to bank; just pass the turn (or end round if no one else is active).
-      return passTurnOrEndRound(state)
+      return advanceAfterAction(state)
     }
     const { player: np, discard: dc } = engineStay(player)
     let s = setPlayer(state, playerId, np)
     s = appendDiscard(s, dc)
-    return passTurnOrEndRound(s)
+    return advanceAfterAction(s)
   }
 
   let newState = { ...state, deck, discard }
@@ -227,13 +276,13 @@ export function hitDeferred(state) {
   return newState
 }
 
-// Apply post-draw transitions (turn advance, round end) based on
-// `lastDrawn.result`. No-op for results that don't end a turn.
+// Apply post-draw transitions: round-end on Flip 7, otherwise advance the
+// turn. A draw that triggered a pending action (freeze/flipThree/reassign
+// secondChance) holds the turn open until selectTarget runs.
 export function flushPostDraw(state) {
-  const r = state.lastDrawn?.result
-  if (r === NUMBER_RESULT.BUSTED) return passTurnOrEndRound(state)
-  if (r === NUMBER_RESULT.FLIP_7) return endRound(state)
-  return state
+  if (state.pendingAction) return state
+  if (state.lastDrawn?.result === NUMBER_RESULT.FLIP_7) return endRound(state)
+  return advanceAfterAction(state)
 }
 
 // Returns true when the *current* state would end the round if flushed.
@@ -296,6 +345,7 @@ function resolveActionCard(state, playerId, card) {
 // Current player voluntarily ends their turn.
 export function stay(state) {
   if (state.pendingAction) return state
+  if (state.phase === 'initialDeal') return state
   const playerId = getCurrentPlayerId(state)
   const player = state.players[playerId]
   if (player.status !== PLAYER_STATUS.ACTIVE) return state
@@ -304,7 +354,7 @@ export function stay(state) {
   const { player: np, discard: dc } = engineStay(player)
   let s = setPlayer(state, playerId, np)
   s = appendDiscard(s, dc)
-  return passTurnOrEndRound(s)
+  return advanceAfterAction(s)
 }
 
 // ----------------------------------------------------------------------------
@@ -336,7 +386,7 @@ export function targetableForPending(state) {
 export function selectTarget(state, targetId) {
   const action = state.pendingAction
   if (!action) return state
-  const { kind, card, fromPlayerId } = action
+  const { kind, card } = action
 
   if (kind === 'freeze') {
     const target = state.players[targetId]
@@ -344,20 +394,20 @@ export function selectTarget(state, targetId) {
     let s = { ...state, pendingAction: null }
     s = setPlayer(s, targetId, np)
     s = appendDiscard(s, dc)
-    // Drawer's turn continues only if they're still active
-    const drawer = s.players[fromPlayerId]
-    if (drawer.status !== PLAYER_STATUS.ACTIVE) return passTurnOrEndRound(s)
-    return s
+    // Action card was the drawer's single turn-action; advance regardless
+    // of whether the drawer is still active.
+    return advanceAfterAction(s)
   }
 
   if (kind === 'reassignSecondChance') {
     const target = state.players[targetId]
     const { player: np } = applySecondChance(target, card)
-    return {
+    const s = {
       ...state,
       players: { ...state.players, [targetId]: np },
       pendingAction: null,
     }
+    return advanceAfterAction(s)
   }
 
   if (kind === 'flipThree') {
@@ -372,8 +422,11 @@ export function selectTarget(state, targetId) {
       s = withDrawnCard(s, targetId, drawn)
       if (drawn.type === CARD_TYPE.NUMBER) {
         s = resolveNumberCardDeferred(s, targetId, drawn)
-        s = flushPostDraw(s)
-        if (s.status !== 'playing') return s
+        // Flip 7 inside a Flip Three ends the round immediately.
+        if (s.lastDrawn?.result === NUMBER_RESULT.FLIP_7) return endRound(s)
+        // Bust inside Flip Three stops the cascade but does NOT advance
+        // the turn yet — the outer advanceAfterAction below handles that.
+        if (s.players[targetId].status !== PLAYER_STATUS.ACTIVE) break
       } else if (drawn.type === CARD_TYPE.MODIFIER) {
         const { player: np } = applyModifierCard(target, drawn)
         s = setPlayer(s, targetId, np)
@@ -382,22 +435,21 @@ export function selectTarget(state, targetId) {
         s = appendDiscard(s, [drawn])
       }
     }
-    // Drawer's turn continues if they're still active
-    const drawer = s.players[fromPlayerId]
-    if (!drawer || drawer.status !== PLAYER_STATUS.ACTIVE) return passTurnOrEndRound(s)
-    return s
+    return advanceAfterAction(s)
   }
 
   return state
 }
 
-// Cancel a pending action — for now, equivalent to discarding the card.
+// Cancel a pending action — discard the card and advance the turn (the
+// drawer's single turn-action has been consumed even if no target is chosen).
 export function cancelPending(state) {
   if (!state.pendingAction) return state
   const card = state.pendingAction.card
-  return {
+  const s = {
     ...state,
     pendingAction: null,
     discard: [...state.discard, card],
   }
+  return advanceAfterAction(s)
 }

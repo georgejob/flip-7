@@ -19,6 +19,7 @@ export function MyHand({
   flip7Snapshot,
   shakeKey = 0,
   round,
+  phase = 'play',
   isMyTurn,
   isWaitingForOther,
   waitingForName,
@@ -28,6 +29,7 @@ export function MyHand({
   onStay,
   pending,
 }) {
+  const isDealing = phase === 'initialDeal'
   const cardsRef = useRef(null)
   const isBusted = player?.status === 'busted'
   const isFlip7 = !!flip7Snapshot
@@ -57,7 +59,7 @@ export function MyHand({
   // Score for the Stay button — only meaningful while the player is active.
   const score = player && !isBusted ? calcRoundScore(player) : 0
   const canStay = numbers.length + modifiers.length > 0
-  const canAct = isMyTurn && !hasPendingAction && player?.status === 'active'
+  const canAct = isMyTurn && !hasPendingAction && !isDealing && player?.status === 'active'
 
   // Red-flash + shake on the cards row when shakeKey bumps.
   const [flash, setFlash] = useState(false)
@@ -245,6 +247,25 @@ export function MyHand({
             }}
           >
             🎉 You flipped 7!
+          </div>
+        ) : isDealing ? (
+          <div
+            style={{
+              flex: 1,
+              border: '2px dashed #BAE6FD',
+              background: '#F0F9FF',
+              borderRadius: 12,
+              padding: '9px',
+              textAlign: 'center',
+              color: '#0EA5E9',
+              fontFamily: "'Nunito', sans-serif",
+              fontWeight: 900,
+              fontSize: 12,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            🃏 dealing initial cards…
           </div>
         ) : isWaitingForOther ? (
           <div

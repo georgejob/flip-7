@@ -262,10 +262,15 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
       : null
   const targets = pendingForMe ? targetableForPending(gameState) : []
 
+  const phase = gameState?.phase ?? 'play'
   const turnText = currentPlayerId
-    ? isMyTurn
-      ? 'your turn'
-      : `${currentPlayerName}'s turn`
+    ? phase === 'initialDeal'
+      ? isMyTurn
+        ? 'dealing your card…'
+        : `dealing to ${currentPlayerName}…`
+      : isMyTurn
+        ? 'your turn'
+        : `${currentPlayerName}'s turn`
     : ''
 
   return (
@@ -402,6 +407,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
         flip7Snapshot={flip7DisplayHand}
         shakeKey={shakeKey}
         round={gameState?.round ?? 1}
+        phase={phase}
         isMyTurn={isMyTurn}
         isWaitingForOther={!isMyTurn}
         waitingForName={currentPlayerName}
