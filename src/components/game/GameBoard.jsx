@@ -339,7 +339,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
             fontSize: 11,
           }}
         >
-          {deckLeft} left
+          {deckLeft} cards left
         </span>
       </div>
 
