@@ -31,6 +31,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
   const [bustModal, setBustModal] = useState(null) // { card } | null
   const [saveModal, setSaveModal] = useState(null) // { card } | null
   const [shakeKey, setShakeKey] = useState(0) // bumped to retrigger shake on hand
+  const [pinnedBustCard, setPinnedBustCard] = useState(null) // dup card for our bust, kept after lastDrawn moves on
   const lastEventAtRef = useRef(0)
   const bustModalTimerRef = useRef(null) // pending setTimeout id for the shake→modal transition
   const prevHandRef = useRef(null) // most-recent active-hand snapshot for the local player
@@ -135,12 +136,31 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
     }
   }, [pendingRoundEnd, flushPendingRoundEnd])
 
+  // Pin the bust card once we see the local player's bust event. lastDrawn
+  // is overwritten by every subsequent draw (other players' turns), so we
+  // can't read it directly for the rest of the round. Reset on round flip.
+  useEffect(() => {
+    if (me?.status !== 'busted') {
+      if (pinnedBustCard !== null) setPinnedBustCard(null)
+      return
+    }
+    if (pinnedBustCard !== null) return
+    const ld = gameState?.lastDrawn
+    if (ld?.playerId === userId && ld?.result === 'busted') {
+      setPinnedBustCard(ld.card)
+    }
+  }, [me?.status, gameState?.lastDrawn, userId, pinnedBustCard])
+
   // Build the displayed hand for the busted state: pre-bust hand snapshot +
   // the duplicate card that caused the bust, so the player can see the card
   // sitting in their hand. The duplicate gets a persistent red glow.
   const bustingDisplayHand = useMemo(() => {
     if (me?.status !== 'busted' || !prevHandRef.current) return null
-    const dup = gameState?.lastDrawn?.card
+    // Prefer the pinned card; fall back to lastDrawn on the very first render
+    // after bust (before the effect above stores it) so there's no flicker.
+    const ld = gameState?.lastDrawn
+    const isOurBust = ld?.playerId === userId && ld?.result === 'busted'
+    const dup = pinnedBustCard ?? (isOurBust ? ld.card : null)
     const base = prevHandRef.current.numbers ?? []
     const numbers = dup?.type === 'number' ? [...base, dup] : base
     return {
@@ -149,7 +169,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
       secondChance: prevHandRef.current.secondChance ?? null,
       bustingIndex: dup?.type === 'number' ? base.length : -1,
     }
-  }, [me?.status, gameState?.lastDrawn])
+  }, [me?.status, pinnedBustCard, gameState?.lastDrawn, userId])
 
   const sortedOthers = useMemo(() => {
     if (!gameState) return []

@@ -11,11 +11,11 @@ after session 5:
 -when hitting stay, quick popup animation to show +123 points or however many
 -rework top bar row.
 
-- when busting, add most recent card to hand to show which card busted
+-(done) when busting, add most recent card to hand to show which card busted
 -last active player of round the modal isn't showing up because the new round is starting
--it seems discard deck is getting reshuffled back into main deck after each round. i only want discard to get shuffled back in after the main deck is exhausted
+-(done)it seems discard deck is getting reshuffled back into main deck after each round. i only want discard to get shuffled back in after the main deck is exhausted
 -on freeze player selection, show progress bar to give better insight to the local player on who to freeze
 -sometimes drawing 3 doesn't draw the full 3???
 -last active player busts freezes the game for everyone and the next round doesnt start. no bust modal shows up either
--bust modal sometimes doesn't show up? seems random but need to dig in to see on what conditions
--when a player busts, their bustedSnapshot will keep updating the last card with whatever card the current player draws
+-(done)bust modal sometimes doesn't show up? seems random but need to dig in to see on what conditions
+-(done)when a player busts, their bustedSnapshot will keep updating the last card with whatever card the current player draws
