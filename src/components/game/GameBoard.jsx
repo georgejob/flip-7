@@ -282,6 +282,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
           justifyContent: 'space-between',
           marginBottom: 10,
           gap: 8,
+          flexShrink: 0,
         }}
       >
         <button
@@ -344,6 +345,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
       </div>
 
       <div
+        className="others-scroll"
         style={{
           background: 'rgba(255,255,255,0.5)',
           border: '2px solid #BAE6FD',
@@ -357,6 +359,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
           gap: 4,
           scrollbarWidth: 'thin',
           scrollbarColor: '#7DD3FC transparent',
+          flexShrink: 0,
         }}
       >
         {sortedOthers.length === 0 && (
@@ -384,6 +387,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
       </div>
 
       <div
+        className="progress-section"
         style={{
           background: 'white',
           border: '2px solid #7DD3FC',
@@ -394,6 +398,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
           overflowY: 'auto',
           scrollbarWidth: 'thin',
           scrollbarColor: '#7DD3FC transparent',
+          flexShrink: 0,
         }}
       >
         {leaderboard.map(({ id, player, colorIndex }, i) => (

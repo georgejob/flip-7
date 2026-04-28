@@ -122,10 +122,6 @@ export function Lobby({ onEnterRoom }) {
 
   return (
     <PhoneFrame>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-        <span style={badgeStyle}>Card party</span>
-      </div>
-
       <div style={{ textAlign: 'center', marginBottom: 8 }}>
         <Logo />
         <p
@@ -136,7 +132,7 @@ export function Lobby({ onEnterRoom }) {
             fontSize: 14,
           }}
         >
-          push your luck. flip exactly seven.
+          Push your luck. First to 200 wins!
         </p>
       </div>
 
@@ -248,19 +244,6 @@ export function Lobby({ onEnterRoom }) {
 
       <div style={{ flex: 1 }} />
 
-      <p
-        style={{
-          textAlign: 'center',
-          fontSize: 11,
-          color: '#7DD3FC',
-          fontWeight: 900,
-          textTransform: 'uppercase',
-          letterSpacing: '0.12em',
-          margin: '20px 0 0',
-        }}
-      >
-        2–18 players · first to 200 wins
-      </p>
     </PhoneFrame>
   )
 }

@@ -5,16 +5,41 @@
   box-sizing: border-box;
 }
 
-html, body, #root {
+html, body {
   margin: 0;
   padding: 0;
-  min-height: 100vh;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: fixed;
+  overscroll-behavior: none;
+}
+
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
   font-family: 'Nunito', sans-serif;
   background: #E0F2FE;
   color: #082F49;
+}
+
+.screen-container {
+  height: 100vh;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-height: 700px) {
+  .others-scroll { height: 130px !important; }
+  .progress-section { height: 88px !important; }
 }
 
 button {

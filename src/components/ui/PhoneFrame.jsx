@@ -3,13 +3,11 @@ import { Backdrop } from './Backdrop'
 export function PhoneFrame({ children }) {
   return (
     <div
+      className="screen-container"
       style={{
-        minHeight: '100vh',
-        width: '100%',
-        display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 24,
+        padding: 16,
         background: '#E0F2FE',
       }}
     >
@@ -18,7 +16,8 @@ export function PhoneFrame({ children }) {
           position: 'relative',
           width: '100%',
           maxWidth: 400,
-          minHeight: 720,
+          height: '100%',
+          maxHeight: 860,
           background: '#F0F9FF',
           border: '6px solid #7DD3FC',
           borderRadius: 40,
@@ -31,10 +30,12 @@ export function PhoneFrame({ children }) {
           style={{
             position: 'relative',
             zIndex: 2,
-            padding: '28px 24px 32px',
+            padding: '20px 20px 24px',
+            paddingBottom: 'calc(24px + env(safe-area-inset-bottom))',
             display: 'flex',
             flexDirection: 'column',
-            minHeight: 720,
+            height: '100%',
+            overflowY: 'auto',
           }}
         >
           {children}
