@@ -5,11 +5,9 @@ after session 4:
 
 after session 5:
 -buttons should give feedback/animation when pressed. rn just tap and it works.
--bust animation needed
--(done)flip 7 animation needed
 -flip 7 confetti needs to last longer. rn it shows for like a split second
 -flip 7 modal displaying cards doesn't fit in modal. need to make it fit inside.
--flip 7 other player the modal hangs off the right side/doesn't fit in screen
+-flip 7 other player toast hangs off the right side/doesn't fit in screen
 -your hand container needs reworking. larger cards, make sure use of the space.
 -when hitting stay, quick popup animation to show +123 points or however many
 -your turn and your name needs to be more clear somehow
@@ -23,3 +21,5 @@ after session 5:
 -(done)when a player busts, their bustedSnapshot will keep updating the last card with whatever card the current player draws
 -(done)it seems discard deck is getting reshuffled back into main deck after each round. i only want discard to get shuffled
 -(done) when busting, add most recent card to hand to show which card busted 
+-(done)bust animation needed
+-(done)flip 7 animation needed
