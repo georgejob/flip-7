@@ -32,6 +32,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
   const [saveModal, setSaveModal] = useState(null) // { card } | null
   const [shakeKey, setShakeKey] = useState(0) // bumped to retrigger shake on hand
   const lastEventAtRef = useRef(0)
+  const bustModalTimerRef = useRef(null) // pending setTimeout id for the shake→modal transition
   const prevHandRef = useRef(null) // most-recent active-hand snapshot for the local player
 
   const currentPlayerId = gameState ? getCurrentPlayerId(gameState) : null
@@ -73,6 +74,11 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
   // Bust / save event detection. Each `lastDrawn.at` value represents a single
   // draw event; we track the last one we've reacted to so the same event
   // doesn't trigger the modal twice.
+  //
+  // The shake→modal timer lives in a ref (not the effect's cleanup) because
+  // gameState updates land twice — once optimistically, once via Supabase
+  // realtime echo — and any state change re-runs this effect. A cleanup-based
+  // clearTimeout would race the echo and cancel the modal before it opens.
   useEffect(() => {
     const ld = gameState?.lastDrawn
     if (!ld || !userId) return
@@ -81,15 +87,24 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
     lastEventAtRef.current = ld.at
 
     if (ld.result === 'busted') {
-      // Shake the hand first, then open the modal.
       setShakeKey((k) => k + 1)
-      const t = setTimeout(() => setBustModal({ card: ld.card }), SHAKE_BEFORE_MODAL_MS)
-      return () => clearTimeout(t)
-    }
-    if (ld.result === 'saved') {
+      if (bustModalTimerRef.current) clearTimeout(bustModalTimerRef.current)
+      bustModalTimerRef.current = setTimeout(() => {
+        bustModalTimerRef.current = null
+        setBustModal({ card: ld.card })
+      }, SHAKE_BEFORE_MODAL_MS)
+    } else if (ld.result === 'saved') {
       setSaveModal({ card: ld.card })
     }
   }, [gameState?.lastDrawn, userId])
+
+  // Clear any pending shake→modal timer on unmount.
+  useEffect(
+    () => () => {
+      if (bustModalTimerRef.current) clearTimeout(bustModalTimerRef.current)
+    },
+    [],
+  )
 
   // Clean up modals when a new round starts (engine resets lastDrawn to null).
   useEffect(() => {
