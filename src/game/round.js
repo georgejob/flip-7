@@ -156,7 +156,9 @@ function endRound(state) {
     }
   }
 
-  // Reset everyone for the next round, fresh deck.
+  // Reset everyone for the next round. The deck persists across rounds —
+  // it is only reshuffled (from the discard pile) when drawCard finds it
+  // empty mid-game.
   const resetPlayers = {}
   for (const id of state.playerOrder) {
     resetPlayers[id] = resetPlayerForRound(newPlayers[id])
@@ -166,8 +168,7 @@ function endRound(state) {
     players: resetPlayers,
     round: state.round + 1,
     turnIndex: 0,
-    deck: shuffle(buildDeck()),
-    discard: [],
+    discard: newDiscard,
     pendingAction: null,
     lastDrawn: null,
     status: 'playing',
@@ -198,7 +199,17 @@ export function hitDeferred(state) {
   if (player.status !== PLAYER_STATUS.ACTIVE) return state
 
   const { card, deck, discard } = drawCard(state.deck, state.discard)
-  if (!card) return state
+  if (!card) {
+    // Deck and discard both empty — forced stay for the drawing player.
+    if (player.numbers.length === 0 && player.modifiers.length === 0) {
+      // Nothing to bank; just pass the turn (or end round if no one else is active).
+      return passTurnOrEndRound(state)
+    }
+    const { player: np, discard: dc } = engineStay(player)
+    let s = setPlayer(state, playerId, np)
+    s = appendDiscard(s, dc)
+    return passTurnOrEndRound(s)
+  }
 
   let newState = { ...state, deck, discard }
   newState = withDrawnCard(newState, playerId, card)
