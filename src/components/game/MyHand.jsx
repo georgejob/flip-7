@@ -16,6 +16,7 @@ const labelStyle = {
 export function MyHand({
   player,
   bustedSnapshot,
+  flip7Snapshot,
   shakeKey = 0,
   round,
   isMyTurn,
@@ -29,13 +30,18 @@ export function MyHand({
 }) {
   const cardsRef = useRef(null)
   const isBusted = player?.status === 'busted'
+  const isFlip7 = !!flip7Snapshot
 
   // When busted, render the snapshot taken before the bust (engine has cleared
-  // the live hand) plus the duplicate that caused the bust at the end. The
-  // snapshot is computed in GameBoard.
+  // the live hand) plus the duplicate that caused the bust at the end. When
+  // the local player flips 7, the engine has also cleared the hand — the
+  // snapshot lets us keep showing the 7 cards while the celebration runs.
+  // Both snapshots are computed in GameBoard.
   const display = isBusted && bustedSnapshot
     ? bustedSnapshot
-    : { numbers: player?.numbers ?? [], modifiers: player?.modifiers ?? [], secondChance: player?.secondChance ?? null, bustingIndex: -1 }
+    : isFlip7
+      ? flip7Snapshot
+      : { numbers: player?.numbers ?? [], modifiers: player?.modifiers ?? [], secondChance: player?.secondChance ?? null, bustingIndex: -1 }
   const numbers = display.numbers
   const modifiers = display.modifiers
   const secondChance = display.secondChance
@@ -62,13 +68,37 @@ export function MyHand({
     return () => clearTimeout(t)
   }, [shakeKey])
 
-  const containerBorder = isBusted ? '2.5px solid #FECACA' : '2.5px solid #7DD3FC'
-  const containerBg = isBusted ? '#FFF5F5' : 'white'
+  const containerBorder = isBusted
+    ? '2.5px solid #FECACA'
+    : isFlip7
+      ? '2.5px solid #FCD34D'
+      : '2.5px solid #7DD3FC'
+  const containerBg = isBusted ? '#FFF5F5' : isFlip7 ? '#FFFBEB' : 'white'
+
+  // Golden pulse-twice on the container when Flip 7 lands.
+  const flip7ContainerAnimate = isFlip7
+    ? {
+        x: 0,
+        boxShadow: [
+          '0 0 0 0 rgba(252, 211, 77, 0)',
+          '0 0 0 4px #FCD34D, 0 0 24px rgba(252, 211, 77, 0.4)',
+          '0 0 0 0 rgba(252, 211, 77, 0)',
+          '0 0 0 4px #FCD34D, 0 0 24px rgba(252, 211, 77, 0.4)',
+          '0 0 0 0 rgba(252, 211, 77, 0)',
+        ],
+      }
+    : null
 
   return (
     <motion.div
-      animate={shakeKey ? { x: [0, -8, 8, -5, 5, 0] } : { x: 0 }}
-      transition={{ duration: 0.4 }}
+      animate={
+        flip7ContainerAnimate
+          ? flip7ContainerAnimate
+          : shakeKey
+            ? { x: [0, -8, 8, -5, 5, 0] }
+            : { x: 0 }
+      }
+      transition={flip7ContainerAnimate ? { duration: 0.6 } : { duration: 0.4 }}
       style={{
         background: containerBg,
         border: containerBorder,
@@ -85,10 +115,10 @@ export function MyHand({
         <span
           style={{
             ...labelStyle,
-            color: isBusted ? '#7F1D1D' : labelStyle.color,
+            color: isBusted ? '#7F1D1D' : isFlip7 ? '#92400E' : labelStyle.color,
           }}
         >
-          Your hand · {isBusted ? 'busted' : `${totalCards} cards`}
+          Your hand · {isBusted ? 'busted' : isFlip7 ? '🎉 flip 7!' : `${totalCards} cards`}
         </span>
         <span
           style={{
@@ -146,17 +176,21 @@ export function MyHand({
             // Faded for the rest of the hand, but the busting card stays
             // fully opaque so it remains visually identifiable.
             const cardOpacity = isBusted && !isBusting ? 0.5 : 1
+            const animateProps = isFlip7
+              ? { x: 0, opacity: 1, scale: 1, y: [0, -4, 0], filter: 'none' }
+              : flash
+                ? { x: 0, opacity: cardOpacity, scale: 1, filter: 'sepia(1) hue-rotate(-50deg) saturate(4)' }
+                : { x: 0, opacity: cardOpacity, scale: 1, filter: 'none' }
+            const transitionProps = isFlip7
+              ? { delay: i * 0.08, duration: 0.5, y: { times: [0, 0.5, 1] } }
+              : { type: 'spring', stiffness: 380, damping: 22 }
             return (
               <motion.div
                 key={key}
                 initial={{ x: 80, opacity: 0, scale: 0.9 }}
-                animate={
-                  flash
-                    ? { x: 0, opacity: cardOpacity, scale: 1, filter: 'sepia(1) hue-rotate(-50deg) saturate(4)' }
-                    : { x: 0, opacity: cardOpacity, scale: 1, filter: 'none' }
-                }
+                animate={animateProps}
                 exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+                transition={transitionProps}
                 style={{
                   position: 'absolute',
                   left: positions[i] ?? 0,
@@ -191,6 +225,26 @@ export function MyHand({
             }}
           >
             💥 You busted this round
+          </div>
+        ) : isFlip7 ? (
+          <div
+            style={{
+              flex: 1,
+              background: '#FEF3C7',
+              border: '2px solid #FCD34D',
+              boxShadow: '0 4px 0 #FCD34D',
+              borderRadius: 12,
+              padding: '9px',
+              textAlign: 'center',
+              color: '#92400E',
+              fontFamily: "'Nunito', sans-serif",
+              fontWeight: 900,
+              fontSize: 13,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            🎉 You flipped 7!
           </div>
         ) : isWaitingForOther ? (
           <div

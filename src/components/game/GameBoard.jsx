@@ -8,6 +8,9 @@ import { MyHand } from './MyHand'
 import { TargetPickerModal } from './TargetPickerModal'
 import { BustModal } from './BustModal'
 import { SecondChanceModal } from './SecondChanceModal'
+import { Flip7Modal } from './Flip7Modal'
+import { Flip7Toast } from './Flip7Toast'
+import { Confetti } from './Confetti'
 import { getCurrentPlayerId, targetableForPending } from '../../game/round'
 
 const STATUS_RANK = { active: 0, stayed: 1, frozen: 2, busted: 3 }
@@ -30,9 +33,14 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
   const [newestCardKey, setNewestCardKey] = useState(null)
   const [bustModal, setBustModal] = useState(null) // { card } | null
   const [saveModal, setSaveModal] = useState(null) // { card } | null
+  const [flip7Modal, setFlip7Modal] = useState(null) // { card } | null — local player's flip-7
+  const [flip7Toast, setFlip7Toast] = useState(null) // { name } | null — other player's flip-7
+  const [confettiActive, setConfettiActive] = useState(false)
   const [shakeKey, setShakeKey] = useState(0) // bumped to retrigger shake on hand
   const [pinnedBustCard, setPinnedBustCard] = useState(null) // dup card for our bust, kept after lastDrawn moves on
+  const [pinnedFlip7Card, setPinnedFlip7Card] = useState(null) // 7th card for our flip-7, kept after lastDrawn moves on
   const lastEventAtRef = useRef(0)
+  const lastOtherFlip7AtRef = useRef(0)
   const bustModalTimerRef = useRef(null) // pending setTimeout id for the shake→modal transition
   const prevHandRef = useRef(null) // most-recent active-hand snapshot for the local player
 
@@ -96,8 +104,24 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
       }, SHAKE_BEFORE_MODAL_MS)
     } else if (ld.result === 'saved') {
       setSaveModal({ card: ld.card })
+    } else if (ld.result === 'flip7') {
+      setPinnedFlip7Card(ld.card)
+      setConfettiActive(true)
+      setFlip7Modal({ card: ld.card })
     }
   }, [gameState?.lastDrawn, userId])
+
+  // Other-player flip-7 detection — fires the toast on non-local clients.
+  useEffect(() => {
+    const ld = gameState?.lastDrawn
+    if (!ld || !userId) return
+    if (ld.playerId === userId) return
+    if (ld.result !== 'flip7') return
+    if (ld.at === lastOtherFlip7AtRef.current) return
+    lastOtherFlip7AtRef.current = ld.at
+    const name = gameState?.players?.[ld.playerId]?.name ?? 'Player'
+    setFlip7Toast({ name })
+  }, [gameState?.lastDrawn, userId, gameState?.players])
 
   // Clear any pending shake→modal timer on unmount.
   useEffect(
@@ -112,26 +136,40 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
     if (!gameState?.lastDrawn) {
       setBustModal(null)
       setSaveModal(null)
+      setFlip7Modal(null)
+      setPinnedFlip7Card(null)
+      setConfettiActive(false)
     }
   }, [gameState?.lastDrawn])
 
-  // Safety timeout: if the local player busted as last-active and never
-  // dismisses the bust modal, auto-flush the deferred round-end so other
+  // Safety timeout: if the local player busted / flipped-7 as last-active and
+  // never dismisses the modal, auto-flush the deferred round-end so other
   // clients don't wait forever.
   useEffect(() => {
-    if (!bustModal || !pendingRoundEnd) return
+    if (!pendingRoundEnd) return
+    if (!bustModal && !flip7Modal) return
     const t = setTimeout(() => {
       setBustModal(null)
+      setFlip7Modal(null)
+      setConfettiActive(false)
       flushPendingRoundEnd()
     }, ROUND_END_SAFETY_MS)
     return () => clearTimeout(t)
-  }, [bustModal, pendingRoundEnd, flushPendingRoundEnd])
+  }, [bustModal, flip7Modal, pendingRoundEnd, flushPendingRoundEnd])
 
   const handleBustContinue = useCallback(() => {
     setBustModal(null)
     if (pendingRoundEnd) {
       // Fire-and-forget; the local state update arrives via the realtime
       // subscription. Errors surface through useGame's `error`.
+      flushPendingRoundEnd()
+    }
+  }, [pendingRoundEnd, flushPendingRoundEnd])
+
+  const handleFlip7Continue = useCallback(() => {
+    setFlip7Modal(null)
+    setConfettiActive(false)
+    if (pendingRoundEnd) {
       flushPendingRoundEnd()
     }
   }, [pendingRoundEnd, flushPendingRoundEnd])
@@ -150,6 +188,24 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
       setPinnedBustCard(ld.card)
     }
   }, [me?.status, gameState?.lastDrawn, userId, pinnedBustCard])
+
+  // Build the displayed hand for the local-player flip-7 state. The engine
+  // clears the hand on flip-7 (cards go to discard at round end), so we
+  // splice the 7th card onto the prev-hand snapshot to keep showing all 7.
+  const flip7DisplayHand = useMemo(() => {
+    if (!flip7Modal || !prevHandRef.current) return null
+    const ld = gameState?.lastDrawn
+    const isOurFlip7 = ld?.playerId === userId && ld?.result === 'flip7'
+    const seventh = pinnedFlip7Card ?? (isOurFlip7 ? ld.card : null)
+    const base = prevHandRef.current.numbers ?? []
+    const numbers = seventh?.type === 'number' ? [...base, seventh] : base
+    return {
+      numbers,
+      modifiers: prevHandRef.current.modifiers ?? [],
+      secondChance: prevHandRef.current.secondChance ?? null,
+      bustingIndex: -1,
+    }
+  }, [flip7Modal, pinnedFlip7Card, gameState?.lastDrawn, userId])
 
   // Build the displayed hand for the busted state: pre-bust hand snapshot +
   // the duplicate card that caused the bust, so the player can see the card
@@ -343,6 +399,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
       <MyHand
         player={me}
         bustedSnapshot={bustingDisplayHand}
+        flip7Snapshot={flip7DisplayHand}
         shakeKey={shakeKey}
         round={gameState?.round ?? 1}
         isMyTurn={isMyTurn}
@@ -396,6 +453,21 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
         open={!!saveModal}
         card={saveModal?.card}
         onDismiss={() => setSaveModal(null)}
+      />
+
+      <Confetti active={confettiActive} count={100} duration={3000} />
+
+      <Flip7Modal
+        open={!!flip7Modal}
+        numbers={flip7DisplayHand?.numbers ?? []}
+        modifiers={flip7DisplayHand?.modifiers ?? []}
+        onContinue={handleFlip7Continue}
+      />
+
+      <Flip7Toast
+        open={!!flip7Toast}
+        name={flip7Toast?.name}
+        onDismiss={() => setFlip7Toast(null)}
       />
     </PhoneFrame>
   )

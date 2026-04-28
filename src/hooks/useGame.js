@@ -95,15 +95,15 @@ export function useGame(roomId, userId) {
       const intermediate = round.hitDeferred(gameState)
       if (intermediate === gameState) return
 
-      const localBust =
-        userId &&
-        intermediate.lastDrawn?.playerId === userId &&
-        intermediate.lastDrawn?.result === 'busted'
+      const ld = intermediate.lastDrawn
+      const isOurs = userId && ld?.playerId === userId
+      const localBust = isOurs && ld?.result === 'busted'
+      const localFlip7 = isOurs && ld?.result === 'flip7'
       const ending = round.wouldEndRound(intermediate)
 
-      if (localBust && ending) {
+      if ((localBust || localFlip7) && ending) {
         // Defer the round-end transition; UI will flush after the player
-        // dismisses the bust modal (or the 10s safety timer fires).
+        // dismisses the bust / flip-7 modal (or the 10s safety timer fires).
         await writeState(intermediate)
         setPendingRoundEnd(true)
       } else {
