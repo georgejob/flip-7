@@ -131,6 +131,7 @@ export function MyHand({
           position: 'relative',
           height: CARD_DIMENSIONS.height + 4,
           width: '100%',
+          zIndex: 0,
         }}
       >
         <AnimatePresence>
