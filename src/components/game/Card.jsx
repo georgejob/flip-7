@@ -1,5 +1,6 @@
 import { cardColorsFor } from './cardColors'
 import { getCardDetailLevel } from '../../hooks/useAdaptiveLayout'
+import { ModifierCard as FoilModifierCard, modifierTypeFor } from './ModifierCard'
 
 const CARD_W = 38
 const CARD_H = 54
@@ -18,7 +19,10 @@ export function Card({ card, glow = false, style, width, height }) {
   if (card.type === 'number') {
     return <NumberCard value={card.value} glow={glow} style={style} width={width} height={height} />
   }
-  if (card.type === 'modifier') return <ModifierCard card={card} glow={glow} style={style} />
+  const modType = modifierTypeFor(card)
+  if (modType) {
+    return <FoilModifierCard type={modType} glow={glow} style={style} width={width} height={height} />
+  }
   if (card.type === 'action') return <ActionCard card={card} glow={glow} style={style} />
   return null
 }
@@ -215,64 +219,9 @@ function NumberCard({ value, glow, style, width, height }) {
   )
 }
 
-function ModifierCard({ card, glow, style }) {
-  const isX2 = card.modifier === 'x2'
-  return (
-    <div
-      style={{
-        height: CARD_H,
-        minWidth: 44,
-        borderRadius: 8,
-        border: isX2 ? '2.5px dashed #F59E0B' : '2.5px dashed #FB923C',
-        background: isX2
-          ? 'linear-gradient(180deg, #FCD34D, #FBBF24)'
-          : 'linear-gradient(180deg, #FED7AA, #FDBA74)',
-        boxShadow: glowShadow(glow) ?? (isX2 ? '0 2px 0 #D97706' : '0 2px 0 #EA580C'),
-        color: isX2 ? '#78350F' : '#7C2D12',
-        fontFamily: "'Nunito', sans-serif",
-        fontWeight: 900,
-        fontSize: 13,
-        padding: '4px 10px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 4,
-        ...style,
-      }}
-    >
-      {isX2 ? <>⚡ ×2</> : <>+ {card.value}</>}
-    </div>
-  )
-}
-
 function ActionCard({ card, glow, style }) {
-  if (card.action === 'secondChance') {
-    return (
-      <div
-        style={{
-          height: CARD_H,
-          minWidth: 50,
-          borderRadius: 8,
-          border: '2px dashed #10B981',
-          background: 'linear-gradient(180deg, #D1FAE5, #A7F3D0)',
-          boxShadow: glowShadow(glow) ?? '0 2px 0 #059669',
-          color: '#064E3B',
-          fontFamily: "'Nunito', sans-serif",
-          fontWeight: 900,
-          fontSize: 11,
-          padding: '3px 9px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 4,
-          ...style,
-        }}
-      >
-        🛡 2nd
-      </div>
-    )
-  }
-  // freeze / flipThree action cards: rendered with a generic look
+  // freeze / flipThree action cards: rendered with a generic look.
+  // secondChance is handled by FoilModifierCard via the dispatcher.
   const isFreeze = card.action === 'freeze'
   return (
     <div

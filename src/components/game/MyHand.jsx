@@ -205,9 +205,9 @@ export function MyHand({
           }}
         >
           {modifiers.map((m, i) => (
-            <Card key={`mod-${i}`} card={m} />
+            <Card key={`mod-${i}`} card={m} width={cardWidth} height={cardHeight} />
           ))}
-          {secondChance && <Card card={secondChance} />}
+          {secondChance && <Card card={secondChance} width={cardWidth} height={cardHeight} />}
         </div>
       )}
 
