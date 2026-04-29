@@ -1,0 +1,216 @@
+Moment-based animations
+The game already has natural dramatic moments that could be amplified significantly. When someone is one card away from Flip 7, their hand container could pulse with a golden glow and a subtle "6/7" progress indicator appears — building tension for everyone watching. When a high-value card like a 12 is drawn, the card could do a more dramatic entrance than a regular card. When the deck gets critically low (say under 10 cards), the deck counter in the top bar could turn red and pulse, adding pressure to every draw.
+A "last player standing" moment — when everyone else has busted or stayed and one player is left — could trigger a subtle spotlight effect on their hand with a "last one standing..." label, making it feel cinematic.
+
+Player identity and personality
+Right now players are just a name and a colored dot. Giving each player a randomly assigned emoji avatar at room creation would add a lot of personality instantly — and it's immediately readable at a glance across the table. Something like 🦊 🐸 🦋 🐙 🦁 assigned automatically, displayed next to the name everywhere.
+A short player card animation when someone joins the waiting room — their name slides in from the side with their emoji, rather than just appearing in the list.
+
+Sound design
+Tasteful optional sound effects would elevate the experience significantly. A satisfying card-dealing sound when a card slides into your hand. A distinct tense sound when you draw a card close to a duplicate. A crashing/buzzer sound for busts. A triumphant fanfare for Flip 7. A subtle tick sound when the score counter animates up. All sounds should default to off and be togglable — nobody wants surprise audio in a group setting.
+
+Table feel
+The background is currently a flat color. Adding a very subtle felt or linen texture to the game board background — just a CSS noise texture at low opacity — would make it feel like an actual card table without being heavy-handed. Pair this with the cards casting very subtle drop shadows as they land in the hand, as if they're physically resting on the surface.
+A subtle vignette around the edges of the game screen (dark gradient inward from the edges) adds depth and focus without being obvious.
+
+Real-time reactions
+A quick-tap emoji reaction system — players can double-tap the screen or press a small emoji button to send a floating reaction visible to everyone for 2-3 seconds. A 😬 when someone is about to draw risky, a 🔥 when someone flips 7, a 💀 when someone busts. These float up from the reacting player's area and fade out. No chat, no text — just quick expressive reactions that feel social without slowing the game down.
+
+Score history and round recap
+After each round, instead of jumping straight to the next round, show a brief animated round recap card — a mini scoreboard showing what everyone scored that round, who busted, who stayed, who flipped 7 if anyone did, and the running totals. Each player's round score animates in one at a time with a slight stagger. The whole thing auto-advances after 4-5 seconds or the host can tap to skip. This gives everyone a moment to process what happened before the next round starts.
+
+Probability indicator
+Since the deck composition is fully known (you know exactly how many of each card remain), you could show a small "bust risk" indicator on your hand — a colored bar or percentage that updates in real time as cards are drawn. Green when risk is low, yellow when moderate, red when high. This adds a strategic layer for players who want it. It could be toggleable so casual players can ignore it.
+
+Shareable moment cards
+When you achieve Flip 7, the game generates a shareable image card — a stylized summary of your hand showing all 7 cards, your score, and the game name. One tap to download or share. People would post these on their stories. It's essentially free marketing every time someone has a great round.
+
+Ambient table presence
+While waiting for other players to take their turns, small ambient animations on the other players' rows would make the game feel alive — a very subtle breathing pulse on the active player's row, a gentle shimmer on stayed players' cards. Nothing that draws attention, just enough to make the screen feel less static during downtime.
+
+Game history and stats
+A post-game stats screen after the winner is declared — not just final scores but fun stats like "Most dramatic comeback", "Closest to busting without busting", "Most Flip 7s", "Highest single round score". These are easy to calculate from the round history and make the end of the game feel like a ceremony rather than just a screen that says who won.
+
+Haptic feedback
+On mobile, subtle haptic feedback (using the Vibration API) when a card lands in your hand, a stronger pulse when you bust, and a rapid triple pulse for Flip 7. This is one of those things that players might not consciously notice but would definitely feel if it was removed.
+
+Progressive web app (PWA)
+Package the game as a PWA so players can add it to their home screen and launch it like a native app — no address bar, no browser chrome, full screen. Pair with a custom splash screen in the game's color scheme and a proper app icon. This alone makes it feel like a real product rather than a website.
+
+Room persistence and rejoin
+If a player accidentally closes the tab or loses connection mid-game, let them rejoin the same room within a window of time (say 5 minutes) and pick up exactly where they left off. Show a "reconnecting..." state to other players rather than showing the player as gone. This removes a big anxiety from mobile play where interruptions are common.
+
+
+
+
+
+
+Card design upgrades
+Right now cards are clean and flat which works well, but there's room to make them feel more physical and tactile. A very subtle inner glow on each card — a thin radial gradient from slightly lighter at the center to the card's base color at the edges — mimics how light catches a real card. Adding a paper grain texture overlay at about 8% opacity on each card face makes them feel printed rather than digital.
+The card back design is an untapped opportunity. When cards are dealt face down during the initial deal animation, you'd briefly see the card back — giving it a proper design (a geometric pattern, the Flip 7 logo watermarked, something in the brand colors) adds a moment of visual richness that most players would appreciate even subconsciously.
+Corner radius consistency matters too — right now the inner panel and outer card have slightly different radii. Making them perfectly concentric (outer card 9px, inner panel 6px) gives the card a premium nested frame look that reads as intentional and crafted.
+
+Lighting and depth
+The game currently feels flat. Adding a consistent light source — imagining light coming from the top center of the screen — would let you add subtle top highlights and bottom shadows across all UI panels. Cards get a 1px white highlight on their top edge. Buttons have a slightly lighter top face and a darker pressed face. The hand container has a subtle inset shadow at the top. None of these are individually noticeable but together they create a sense of physical depth that makes the UI feel three-dimensional.
+A subtle ambient glow behind the active player's hand during their turn — a very soft radial gradient in the brand blue bleeding out from behind the hand container — would draw the eye naturally without being flashy.
+
+Background evolution
+The background decorative elements (confetti shapes, circles, sparkles) are static right now. Making them very slowly drift — floating upward or rotating at maybe 1-2% of normal speed, so slow that you only notice it if you stare — adds life to the screen during the slower moments of the game. Think of it like very gentle parallax. Each shape moves at a slightly different speed and direction so they feel independent.
+A subtle animated gradient on the background itself — slowly cycling between two very close shades of the base blue, on a 10-12 second loop — gives the screen a living, breathing quality without being distracting.
+
+Card dealing choreography
+The initial deal at the start of each round is a missed opportunity for theater. Instead of cards just appearing, they could animate in from a central "deck" position in the middle of the screen — flying outward to each player's position in sequence. Each card would arc slightly as it travels, like a physical deal. The local player's card lands last and flips face-up with a satisfying rotation. This takes maybe 1.5 seconds total and sets the mood for each round.
+Similarly, when a card is drawn mid-round, it could emerge from a small deck icon in the top bar rather than just appearing in the hand — traveling down the screen and landing in position.
+
+Hand fan layout option
+Instead of cards in a straight horizontal row, offer an optional fan layout where cards are arranged in a slight arc — lowest cards angled slightly left, highest cards angled slightly right, center cards flat. This looks much more like actually holding cards in your hand. The fan tightens as more cards are added, naturally creating the overlap effect. This is a more complex layout calculation but the visual payoff is significant — it immediately reads as a card game rather than a UI.
+
+Glassmorphism panels
+The other players section and leaderboard currently use solid white backgrounds. Replacing these with a frosted glass treatment — background: rgba(255, 255, 255, 0.65), backdrop-filter: blur(12px), a subtle 1px solid rgba(255, 255, 255, 0.8) border on the top and left edges — makes them feel like they're floating above the background rather than sitting on it. This works especially well with the animated background gradient underneath.
+The modal overlays (bust, Flip 7) would benefit from this too — a glass-style modal feels much more premium than a solid white box.
+
+Micro-interaction on every tap
+Every interactive element should have a physical press response. Buttons already have the chunky shadow that collapses on press — extend this to cards in the hand (a very slight scale down to 0.96 on tap, springing back to 1), player rows (a brief highlight flash on tap if they become tappable for action card targeting), and the room code box (a satisfying visual "copied" confirmation when tapped). These micro-interactions signal that the app is responsive and alive.
+
+Score counter personality
+When your round score updates in the hand header, instead of just changing the number, animate it with a brief upward float — the old number floats up and fades out while the new number rises from below to take its place, like a slot machine rolling. If the score goes up significantly (say more than 20 points in one draw due to a modifier), the number briefly scales to 1.2 before settling, making big score moments feel exciting.
+
+Status tag animations
+When a player's status changes — going from active to stayed, or active to busted — the status tag shouldn't just appear. It should animate in with a brief pop scale effect (scale: 0 → 1.2 → 1 over 300ms). For the bust tag specifically, it shakes slightly after appearing. For the stay tag, it pulses green once. These are tiny but they make the status changes feel registered and deliberate.
+
+Card color system refinement
+Right now card colors are assigned by cycling through a fixed palette. A more sophisticated approach would be to assign colors semantically — low value cards (1-4) in cooler pastels (blues, mints), mid value (5-8) in neutral pastels (purples, pinks), high value (9-12) in warmer pastels (peaches, yellows). This gives the hand a natural color gradient from cool to warm as values increase, which is both beautiful and subtly communicates card value at a glance.
+
+Round transition ceremony
+Between rounds, instead of the screen immediately resetting, do a brief table-clearing animation — all visible cards slide off screen simultaneously toward the discard pile position, then the screen briefly shows just the background with the Flip 7 logo and round number ("Round 3") fading in and out before the new deal begins. This gives the game a sense of rhythm and chapter structure, like shuffling and cutting a real deck between hands.
+
+Victory screen
+The current game end is just a winner announcement. A proper victory screen would have the winner's name in massive Fredoka One text with a burst of confetti (heavier than the Flip 7 confetti — this is the finale), their final score, and a breakdown of their best round. Behind all of this, the pastel background shapes animate more energetically than usual. Other players' final standings appear below in a podium-style layout — 1st, 2nd, 3rd with slightly different visual weight. A "Play Again" button and a "Share Results" button round it out.
+
+Loading and transition states
+Any time the app is waiting for Supabase (joining a room, starting a game, writing a move) there's currently likely just a brief freeze. Replace every loading moment with a small branded spinner — the Flip 7 logo or a single card icon rotating — so players always know the app is working rather than frozen. Transitions between screens (lobby → waiting room → game) should use a shared element transition if possible, or at minimum a quick fade rather than a hard cut.
+
+
+
+
+
+
+prompt:
+Add three layered visual enhancements to the game board background to make it feel like a physical card table. These are purely CSS/visual changes — no game logic is touched. Apply these enhancements to the GameBoard screen only, not the lobby or waiting room.
+Enhancement 1: Felt/linen texture
+Add a subtle noise texture to the game board background using an SVG filter-based approach — no external image files needed. The texture should sit on top of the existing #F0F9FF background at very low opacity so it reads as a surface grain rather than a pattern.
+Add an SVG-based noise filter to the document and apply it as a pseudo-element on the game board container:
+css.game-board {
+  position: relative;
+  isolation: isolate;
+}
+
+.game-board::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+The key values to get right: baseFrequency at 0.75 produces a fine linen-like grain (lower values = coarser texture, higher = finer). Opacity at 0.045 keeps it almost subliminal — visible when you look for it, invisible when you're focused on playing. If it feels too heavy, bring it down to 0.03. If it feels invisible, bring it up to 0.06. Never go above 0.08.
+Make sure this pseudo-element sits above the background but below all game UI elements — z-index: 1 on the texture, z-index: 2 on all interactive content (the existing .z2 class already handles this).
+Also add a very subtle crosshatch or woven directionality to the texture by layering a second pseudo-element using ::after with a slightly different baseFrequency and a 90deg rotation — this mimics the warp and weft of woven fabric:
+css.game-board::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise2)' transform='rotate(90 150 150)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+Enhancement 2: Card drop shadows
+Every card rendered in the player's hand (MyHand.jsx) and in other player rows (OtherPlayerRow.jsx) should cast a subtle drop shadow as if physically resting on the table surface.
+For the large cards in your hand:
+css.my-card {
+  /* Add to existing styles */
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 3px 6px rgba(0, 0, 0, 0.06),
+    0 0 0 0.5px rgba(0, 0, 0, 0.04);
+}
+The triple-layer shadow is intentional — the first layer is a tight contact shadow directly under the card, the second is a softer ambient shadow showing the card hovering slightly above the surface, and the third is a hairline outline that sharpens the card edge. Together they read as physical depth without looking like a heavy drop shadow effect.
+When a new card is drawn and animates into the hand, add a brief shadow punch — on entry the shadow is slightly larger (0 6px 12px rgba(0, 0, 0, 0.12)) and then eases down to the resting state over 400ms. This mimics the shadow a card casts when it's falling and then settles when it lands. If Framer Motion is being used for the card entry animation, add this as part of the same animation:
+jsinitial={{ boxShadow: '0 6px 12px rgba(0,0,0,0.14), 0 0 0 0.5px rgba(0,0,0,0.04)' }}
+animate={{ boxShadow: '0 1px 2px rgba(0,0,0,0.08), 0 3px 6px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04)' }}
+transition={{ duration: 0.4, ease: 'easeOut' }}
+For the mini cards in other player rows, use a lighter version since they're smaller:
+css.mini-card {
+  /* Add to existing styles */
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.07),
+    0 2px 4px rgba(0, 0, 0, 0.05);
+}
+Modifier cards in the hand (the orange gradient ones) and the Second Chance badge should get a slightly warmer shadow to complement their warm colors:
+css.mod-card, .mod-card-x2 {
+  /* Replace existing box-shadow with */
+  box-shadow:
+    0 2px 0 #EA580C,
+    0 3px 6px rgba(234, 88, 12, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+}
+Enhancement 3: Edge vignette
+Add a vignette overlay to the game board — a dark gradient that bleeds inward from all four edges, darkening the corners and periphery and drawing the eye toward the center of the screen where the game content lives.
+Add a fixed overlay div inside the game board container, above the texture pseudo-elements but below the game UI:
+jsx<div className="vignette" aria-hidden="true" />
+css.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 55%,
+    rgba(8, 47, 73, 0.08) 75%,
+    rgba(8, 47, 73, 0.18) 90%,
+    rgba(8, 47, 73, 0.28) 100%
+  );
+}
+The color rgba(8, 47, 73, ...) is derived from the brand dark #082F49 — using the brand color for the vignette keeps it harmonious rather than a generic black vignette which would feel cold and disconnected. The gradient starts transparent at 55% so the center of the screen — where the player's hand and most important UI lives — has zero darkening. The effect only appears in the outer 45% of the screen.
+On mobile the ellipse may need to be slightly more aggressive since the screen is narrow. Add a media query to tighten it slightly:
+css@media (max-width: 430px) {
+  .vignette {
+    background: radial-gradient(
+      ellipse at center,
+      transparent 45%,
+      rgba(8, 47, 73, 0.08) 68%,
+      rgba(8, 47, 73, 0.18) 85%,
+      rgba(8, 47, 73, 0.26) 100%
+    );
+  }
+}
+Layer order — make sure this is correct:
+From back to front the stacking should be:
+
+#F0F9FF base background color (on the game board element itself)
+Existing decorative SVG background shapes and circles (z-index: 0)
+Felt texture pseudo-elements ::before and ::after (z-index: 1)
+Vignette overlay (z-index: 1, same level as texture — it's additive)
+All game UI content (z-index: 2 — the existing .z2 class)
+
+Performance considerations:
+The SVG noise texture uses filter which can be GPU-intensive on older devices. Add will-change: transform to the texture pseudo-elements to hint to the browser to composite them on the GPU. Also make sure the texture pseudo-elements have contain: strict to prevent them from affecting layout calculations.
+The vignette uses a radial-gradient on a fixed element — this is hardware accelerated and has negligible performance cost.
+Test on a real iPhone (not just the browser simulator) to make sure the texture doesn't produce any visual artifacts or moire patterns on high-DPI retina screens. If the texture looks too coarse on retina, increase background-size from 200px 200px to 300px 300px to scale it down relative to the pixel density.
+Testing checklist:
+
+Texture is visible on close inspection but invisible when focused on playing
+Texture does not produce moire or shimmer on retina/high-DPI screens
+Cards cast visible but subtle shadows that feel physical
+New cards animate in with a heavier shadow that settles to the resting state
+Vignette darkens the edges without darkening any UI content in the center
+All three effects are present on the game board but absent on lobby and waiting room screens
+No performance degradation on iPhone — smooth 60fps animations throughout
+Layer order is correct — texture and vignette never appear on top of cards or buttons
+The overall effect reads as "card table" not "dark mode" — the center of the screen remains bright and the base color is unchanged

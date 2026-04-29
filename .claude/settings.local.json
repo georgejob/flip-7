@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); cd \"c:\\\\Users\\\\georg\\\\Desktop\\\\Code\\\\flip-7\"; npm install -D jest 2>&1)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5174/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5174/src/App.jsx)",
+      "Bash(curl -s -o /dev/null -w \"App: %{http_code}\\\\n\" http://localhost:5174/src/App.jsx)",
+      "Bash(curl -s -o /dev/null -w \"Lobby: %{http_code}\\\\n\" http://localhost:5174/src/components/lobby/Lobby.jsx)",
+      "Bash(curl -s -o /dev/null -w \"WaitingRoom: %{http_code}\\\\n\" http://localhost:5174/src/components/lobby/WaitingRoom.jsx)",
+      "Bash(curl -s -o /dev/null -w \"GameScreen: %{http_code}\\\\n\" http://localhost:5174/src/components/game/GameScreen.jsx)",
+      "Bash(curl -s -o /dev/null -w \"useRoom: %{http_code}\\\\n\" http://localhost:5174/src/hooks/useRoom.js)",
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "Bash(lsof -ti:5174)",
+      "Bash(xargs -r kill)",
+      "Bash(curl -s -o /dev/null -w \"GameBoard: %{http_code}\\\\n\" http://localhost:5174/src/components/game/GameBoard.jsx)",
+      "Bash(curl -s -o /dev/null -w \"MyHand: %{http_code}\\\\n\" http://localhost:5174/src/components/game/MyHand.jsx)",
+      "Bash(curl -s -o /dev/null -w \"OtherPlayerRow: %{http_code}\\\\n\" http://localhost:5174/src/components/game/OtherPlayerRow.jsx)",
+      "Bash(curl -s -o /dev/null -w \"LeaderboardRow: %{http_code}\\\\n\" http://localhost:5174/src/components/game/LeaderboardRow.jsx)",
+      "Bash(curl -s -o /dev/null -w \"Card: %{http_code}\\\\n\" http://localhost:5174/src/components/game/Card.jsx)",
+      "Bash(curl -s -o /dev/null -w \"BustModal: %{http_code}\\\\n\" http://localhost:5174/src/components/game/BustModal.jsx)",
+      "Bash(curl -s -o /dev/null -w \"SecondChanceModal: %{http_code}\\\\n\" http://localhost:5174/src/components/game/SecondChanceModal.jsx)",
+      "Bash(curl -s -o /dev/null -w \"round.js: %{http_code}\\\\n\" http://localhost:5174/src/game/round.js)",
+      "Bash(curl -s -o /dev/null -w \"useGame: %{http_code}\\\\n\" http://localhost:5174/src/hooks/useGame.js)",
+      "Bash(npx eslint *)",
+      "Bash(grep -A1 -E \"FreezeModal\\\\.jsx$|FreezeToast\\\\.jsx$|GameBoard\\\\.jsx$|MyHand\\\\.jsx$\")",
+      "Bash(git stash *)"
+    ]
+  }
+}
