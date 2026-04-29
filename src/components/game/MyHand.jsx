@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Card, CARD_DIMENSIONS } from './Card'
-import { useAdaptiveLayout } from '../../hooks/useAdaptiveLayout'
+import { Card } from './Card'
+import { useDynamicHandLayout } from '../../hooks/useAdaptiveLayout'
 import { calcRoundScore } from '../../game/engine'
 
 const labelStyle = {
@@ -55,11 +55,7 @@ export function MyHand({
   const bustingIndex = display.bustingIndex ?? -1
   const totalCards = numbers.length
 
-  const { positions } = useAdaptiveLayout(cardsRef, {
-    count: totalCards,
-    cardWidth: CARD_DIMENSIONS.width,
-    gap: 4,
-  })
+  const { positions, cardWidth, cardHeight } = useDynamicHandLayout(cardsRef, totalCards)
 
   // Score for the Stay button — only meaningful while the player is active.
   const score = player && !isBusted ? calcRoundScore(player) : 0
@@ -219,8 +215,10 @@ export function MyHand({
         ref={cardsRef}
         style={{
           position: 'relative',
-          height: CARD_DIMENSIONS.height + 4,
+          flex: 1,
+          minHeight: cardHeight + 8,
           width: '100%',
+          minWidth: 0,
           zIndex: 0,
         }}
       >
@@ -237,28 +235,31 @@ export function MyHand({
             // fully opaque so it remains visually identifiable.
             const cardOpacity = isBusted && !isBusting ? 0.5 : 1
             const animateProps = isFlip7
-              ? { x: 0, opacity: 1, scale: 1, y: [0, -4, 0], filter: 'none' }
+              ? { x: 0, y: [0, -4, 0], opacity: 1, filter: 'none' }
               : flash
-                ? { x: 0, opacity: cardOpacity, scale: 1, filter: 'sepia(1) hue-rotate(-50deg) saturate(4)' }
-                : { x: 0, opacity: cardOpacity, scale: 1, filter: 'none' }
+                ? { x: 0, y: 0, opacity: cardOpacity, filter: 'sepia(1) hue-rotate(-50deg) saturate(4)' }
+                : { x: 0, y: 0, opacity: cardOpacity, filter: 'none' }
             const transitionProps = isFlip7
               ? { delay: i * 0.08, duration: 0.5, y: { times: [0, 0.5, 1] } }
-              : { type: 'spring', stiffness: 380, damping: 22 }
+              : { type: 'spring', stiffness: 280, damping: 22 }
             return (
               <motion.div
                 key={key}
-                initial={{ x: 80, opacity: 0, scale: 0.9 }}
+                layout
+                initial={{ x: 10, y: 20, opacity: 0 }}
                 animate={animateProps}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={transitionProps}
                 style={{
                   position: 'absolute',
                   left: positions[i] ?? 0,
-                  top: 0,
+                  top: 4,
+                  width: cardWidth,
+                  height: cardHeight,
                   zIndex: z,
                 }}
               >
-                <Card card={c} glow={glow} />
+                <Card card={c} glow={glow} width={cardWidth} height={cardHeight} />
               </motion.div>
             )
           })}

@@ -1,4 +1,5 @@
 import { paletteForValue } from './cardColors'
+import { getCardDetailLevel } from '../../hooks/useAdaptiveLayout'
 
 const CARD_W = 38
 const CARD_H = 54
@@ -12,9 +13,11 @@ function glowShadow(glow) {
   return null
 }
 
-export function Card({ card, glow = false, style }) {
+export function Card({ card, glow = false, style, width, height }) {
   if (!card) return null
-  if (card.type === 'number') return <NumberCard value={card.value} glow={glow} style={style} />
+  if (card.type === 'number') {
+    return <NumberCard value={card.value} glow={glow} style={style} width={width} height={height} />
+  }
   if (card.type === 'modifier') return <ModifierCard card={card} glow={glow} style={style} />
   if (card.type === 'action') return <ActionCard card={card} glow={glow} style={style} />
   return null
@@ -22,15 +25,35 @@ export function Card({ card, glow = false, style }) {
 
 export const CARD_DIMENSIONS = { width: CARD_W, height: CARD_H }
 
-function NumberCard({ value, glow, style }) {
+function NumberCard({ value, glow, style, width, height }) {
   const p = paletteForValue(value)
+  const dynamic = width != null && height != null
+  const w = width ?? CARD_W
+  const h = height ?? CARD_H
+  const detail = dynamic ? getCardDetailLevel(w) : 'full'
   const isWide = value >= 10
+
+  // Scaled typography. Center number is the dominant element on every level.
+  const centerFontSize =
+    detail === 'full'
+      ? Math.max(12, Math.round(h * (isWide ? 0.34 : 0.42)))
+      : detail === 'medium'
+        ? Math.max(11, Math.round(h * (isWide ? 0.36 : 0.46)))
+        : detail === 'compact'
+          ? Math.max(11, Math.round(h * (isWide ? 0.42 : 0.52)))
+          : Math.max(10, Math.round(h * (isWide ? 0.48 : 0.6)))
+  const cornerFontSize = Math.max(7, Math.round(w * 0.22))
+  const innerW = Math.round(w * 0.62)
+  const innerH = Math.round(h * 0.6)
+  const radius = Math.max(4, Math.round(w * 0.18))
+  const innerRadius = Math.max(3, Math.round(w * 0.1))
+
   return (
     <div
       style={{
-        width: CARD_W,
-        height: CARD_H,
-        borderRadius: 7,
+        width: w,
+        height: h,
+        borderRadius: radius,
         border: `2.5px solid ${p.border}`,
         background: p.bg,
         boxShadow: glowShadow(glow) ?? `0 2px 0 ${p.border}`,
@@ -41,23 +64,77 @@ function NumberCard({ value, glow, style }) {
         ...style,
       }}
     >
-      <div
-        style={{
-          width: 24,
-          height: 32,
-          borderRadius: 4,
-          border: `2px solid ${p.innerBorder}`,
-          background: p.innerBg,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: "'Fredoka One', cursive",
-          fontSize: isWide ? 11 : 14,
-          color: '#082F49',
-        }}
-      >
-        {value}
-      </div>
+      {(detail === 'full' || detail === 'medium') && (
+        <span
+          style={{
+            position: 'absolute',
+            top: 3,
+            left: 4,
+            fontFamily: "'Nunito', sans-serif",
+            fontWeight: 900,
+            fontSize: cornerFontSize,
+            color: p.innerBorder,
+            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+          }}
+        >
+          {value}
+          {detail === 'full' && (
+            <span style={{ fontSize: Math.round(cornerFontSize * 0.85) }}>✦</span>
+          )}
+        </span>
+      )}
+
+      {detail === 'compact' && (
+        <span
+          style={{
+            position: 'absolute',
+            top: 2,
+            left: 3,
+            fontFamily: "'Nunito', sans-serif",
+            fontWeight: 900,
+            fontSize: cornerFontSize,
+            color: p.innerBorder,
+            lineHeight: 1,
+          }}
+        >
+          {value}
+        </span>
+      )}
+
+      {(detail === 'full' || detail === 'medium') ? (
+        <div
+          style={{
+            width: innerW,
+            height: innerH,
+            borderRadius: innerRadius,
+            border: `2px solid ${p.innerBorder}`,
+            background: p.innerBg,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: "'Fredoka One', cursive",
+            fontSize: centerFontSize,
+            color: '#082F49',
+            lineHeight: 1,
+          }}
+        >
+          {value}
+        </div>
+      ) : (
+        <span
+          style={{
+            fontFamily: "'Fredoka One', cursive",
+            fontSize: centerFontSize,
+            color: '#082F49',
+            lineHeight: 1,
+          }}
+        >
+          {value}
+        </span>
+      )}
     </div>
   )
 }
