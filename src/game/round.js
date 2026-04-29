@@ -66,6 +66,7 @@ export function initGameState(membership) {
     discard: [],
     pendingAction: null,
     lastDrawn: null,
+    lastFreeze: null,
     status: 'playing',
     winner: null,
   }
@@ -220,6 +221,7 @@ function endRound(state) {
     discard: newDiscard,
     pendingAction: null,
     lastDrawn: null,
+    lastFreeze: null,
     status: 'playing',
   }
 }
@@ -287,14 +289,12 @@ export function flushPostDraw(state) {
 
 // Returns true when the *current* state would end the round if flushed.
 // Used by the UI to decide whether to defer the round-end transition behind
-// the bust modal acknowledgment.
+// the bust / freeze / flip-7 modal acknowledgment.
 export function wouldEndRound(state) {
+  if (state.pendingAction) return false
   const r = state.lastDrawn?.result
   if (r === NUMBER_RESULT.FLIP_7) return true
-  if (r === NUMBER_RESULT.BUSTED) {
-    return activePlayers(state).length === 0
-  }
-  return false
+  return activePlayers(state).length === 0
 }
 
 function resolveNumberCardDeferred(state, playerId, card) {
@@ -382,18 +382,49 @@ export function targetableForPending(state) {
   })
 }
 
+// Resolve the pending action against a chosen target without advancing
+// the turn. Used by the UI so a freeze that ends the round can be paused
+// behind the freeze modal before the round-end transition fires.
+// For non-freeze actions, this is identical to `selectTarget` minus the
+// final advance step.
+export function selectTargetDeferred(state, targetId) {
+  const action = state.pendingAction
+  if (!action) return state
+  const { kind, card, fromPlayerId } = action
+
+  if (kind === 'freeze') {
+    const target = state.players[targetId]
+    const { player: np, discard: dc, pointsBanked } = applyFreeze(target, card)
+    let s = { ...state, pendingAction: null }
+    s = setPlayer(s, targetId, np)
+    s = appendDiscard(s, dc)
+    s = {
+      ...s,
+      lastFreeze: { targetId, fromPlayerId, pointsBanked, at: Date.now() },
+    }
+    return s
+  }
+  // Non-freeze actions don't need a deferred path — fall through to the
+  // immediate variant.
+  return selectTarget(state, targetId)
+}
+
 // Resolve the pending action against a chosen target.
 export function selectTarget(state, targetId) {
   const action = state.pendingAction
   if (!action) return state
-  const { kind, card } = action
+  const { kind, card, fromPlayerId } = action
 
   if (kind === 'freeze') {
     const target = state.players[targetId]
-    const { player: np, discard: dc } = applyFreeze(target, card)
+    const { player: np, discard: dc, pointsBanked } = applyFreeze(target, card)
     let s = { ...state, pendingAction: null }
     s = setPlayer(s, targetId, np)
     s = appendDiscard(s, dc)
+    s = {
+      ...s,
+      lastFreeze: { targetId, fromPlayerId, pointsBanked, at: Date.now() },
+    }
     // Action card was the drawer's single turn-action; advance regardless
     // of whether the drawer is still active.
     return advanceAfterAction(s)

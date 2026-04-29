@@ -10,8 +10,14 @@ import { BustModal } from './BustModal'
 import { SecondChanceModal } from './SecondChanceModal'
 import { Flip7Modal } from './Flip7Modal'
 import { Flip7Toast } from './Flip7Toast'
+import { FreezeModal } from './FreezeModal'
+import { FreezeToast } from './FreezeToast'
 import { Confetti } from './Confetti'
-import { getCurrentPlayerId, targetableForPending } from '../../game/round'
+import {
+  getCurrentPlayerId,
+  targetableForPending,
+  wouldEndRound,
+} from '../../game/round'
 
 const STATUS_RANK = { active: 0, stayed: 1, frozen: 2, busted: 3 }
 const SHAKE_BEFORE_MODAL_MS = 350
@@ -35,12 +41,18 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
   const [saveModal, setSaveModal] = useState(null) // { card } | null
   const [flip7Modal, setFlip7Modal] = useState(null) // { card } | null — local player's flip-7
   const [flip7Toast, setFlip7Toast] = useState(null) // { name } | null — other player's flip-7
+  const [freezeModal, setFreezeModal] = useState(null) // { fromName, isSelfFreeze, pointsBanked, endsRound } | null
+  const [freezeToast, setFreezeToast] = useState(null) // { name } | null — toast for freezer
+  const [freezeFlash, setFreezeFlash] = useState(0) // bumps to trigger blue glow on hand
+  const [frozenHandSnapshot, setFrozenHandSnapshot] = useState(null) // hand at moment of freeze
   const [confettiActive, setConfettiActive] = useState(false)
   const [shakeKey, setShakeKey] = useState(0) // bumped to retrigger shake on hand
   const [pinnedBustCard, setPinnedBustCard] = useState(null) // dup card for our bust, kept after lastDrawn moves on
   const [pinnedFlip7Card, setPinnedFlip7Card] = useState(null) // 7th card for our flip-7, kept after lastDrawn moves on
   const lastEventAtRef = useRef(0)
   const lastOtherFlip7AtRef = useRef(0)
+  const lastFreezerToastAtRef = useRef(0) // last lastFreeze.at processed for the freezer toast
+  const freezeModalSeenRef = useRef(0) // set to lastFreeze.at when modal has fired; prevents re-fire
   const bustModalTimerRef = useRef(null) // pending setTimeout id for the shake→modal transition
   const prevHandRef = useRef(null) // most-recent active-hand snapshot for the local player
 
@@ -142,20 +154,83 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
     }
   }, [gameState?.lastDrawn])
 
-  // Safety timeout: if the local player busted / flipped-7 as last-active and
-  // never dismisses the modal, auto-flush the deferred round-end so other
-  // clients don't wait forever.
+  // Freeze event detection for the local player (target). Fires the freeze
+  // modal once per freeze event. Each lastFreeze.at uniquely identifies one
+  // event so a re-render or echoed Supabase update can't fire it twice.
+  useEffect(() => {
+    const lf = gameState?.lastFreeze
+    if (!lf || !userId) return
+    if (lf.targetId !== userId) return
+    if (lf.at === freezeModalSeenRef.current) return
+    freezeModalSeenRef.current = lf.at
+    const isSelfFreeze = lf.fromPlayerId === userId
+    const fromName = isSelfFreeze
+      ? null
+      : (gameState.players?.[lf.fromPlayerId]?.name ?? 'Someone')
+    // Snapshot the hand we want to keep showing while frozen — the engine
+    // has already cleared it on the player object, so we capture the
+    // pre-freeze snapshot we've been tracking for the local player.
+    if (prevHandRef.current) {
+      setFrozenHandSnapshot({
+        numbers: prevHandRef.current.numbers ?? [],
+        modifiers: prevHandRef.current.modifiers ?? [],
+        secondChance: prevHandRef.current.secondChance ?? null,
+      })
+    } else {
+      setFrozenHandSnapshot({ numbers: [], modifiers: [], secondChance: null })
+    }
+    setFreezeFlash((k) => k + 1)
+    // Only self-freezes can end the round (a freeze by another player leaves
+    // them still active). The deferred state still satisfies wouldEndRound
+    // because flushPostDraw hasn't run yet — pendingAction is null and
+    // activePlayers is empty.
+    const ending = isSelfFreeze && wouldEndRound(gameState)
+    setFreezeModal({
+      fromName,
+      isSelfFreeze,
+      pointsBanked: lf.pointsBanked ?? 0,
+      endsRound: ending,
+    })
+  }, [gameState, gameState?.lastFreeze, userId])
+
+  // Toast for the player who applied the freeze (when target ≠ self).
+  useEffect(() => {
+    const lf = gameState?.lastFreeze
+    if (!lf || !userId) return
+    if (lf.fromPlayerId !== userId) return
+    if (lf.targetId === userId) return
+    if (lf.at === lastFreezerToastAtRef.current) return
+    lastFreezerToastAtRef.current = lf.at
+    const name = gameState.players?.[lf.targetId]?.name ?? 'Player'
+    setFreezeToast({ name })
+  }, [gameState?.lastFreeze, gameState?.players, userId])
+
+  // Reset frozen state on a new round (engine resets lastFreeze to null).
+  useEffect(() => {
+    if (!gameState?.lastFreeze) {
+      setFrozenHandSnapshot(null)
+      // Don't reset modal here — the modal closes via its own onContinue and
+      // we want it to survive the lastFreeze field being cleared by round
+      // reset (e.g. self-freeze flush sets lastFreeze:null while modal still
+      // open). The modal's own state controls visibility.
+    }
+  }, [gameState?.lastFreeze])
+
+  // Safety timeout: if the local player busted / flipped-7 / self-froze as
+  // last-active and never dismisses the modal, auto-flush the deferred
+  // round-end so other clients don't wait forever.
   useEffect(() => {
     if (!pendingRoundEnd) return
-    if (!bustModal && !flip7Modal) return
+    if (!bustModal && !flip7Modal && !freezeModal) return
     const t = setTimeout(() => {
       setBustModal(null)
       setFlip7Modal(null)
+      setFreezeModal(null)
       setConfettiActive(false)
       flushPendingRoundEnd()
     }, ROUND_END_SAFETY_MS)
     return () => clearTimeout(t)
-  }, [bustModal, flip7Modal, pendingRoundEnd, flushPendingRoundEnd])
+  }, [bustModal, flip7Modal, freezeModal, pendingRoundEnd, flushPendingRoundEnd])
 
   const handleBustContinue = useCallback(() => {
     setBustModal(null)
@@ -169,6 +244,13 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
   const handleFlip7Continue = useCallback(() => {
     setFlip7Modal(null)
     setConfettiActive(false)
+    if (pendingRoundEnd) {
+      flushPendingRoundEnd()
+    }
+  }, [pendingRoundEnd, flushPendingRoundEnd])
+
+  const handleFreezeContinue = useCallback(() => {
+    setFreezeModal(null)
     if (pendingRoundEnd) {
       flushPendingRoundEnd()
     }
@@ -410,6 +492,8 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
         player={me}
         bustedSnapshot={bustingDisplayHand}
         flip7Snapshot={flip7DisplayHand}
+        frozenSnapshot={frozenHandSnapshot}
+        freezeFlashKey={freezeFlash}
         shakeKey={shakeKey}
         round={gameState?.round ?? 1}
         phase={phase}
@@ -479,6 +563,21 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
         open={!!flip7Toast}
         name={flip7Toast?.name}
         onDismiss={() => setFlip7Toast(null)}
+      />
+
+      <FreezeModal
+        open={!!freezeModal}
+        fromName={freezeModal?.fromName}
+        isSelfFreeze={!!freezeModal?.isSelfFreeze}
+        pointsBanked={freezeModal?.pointsBanked ?? 0}
+        endsRound={!!freezeModal?.endsRound}
+        onContinue={handleFreezeContinue}
+      />
+
+      <FreezeToast
+        open={!!freezeToast}
+        name={freezeToast?.name}
+        onDismiss={() => setFreezeToast(null)}
       />
     </PhoneFrame>
   )

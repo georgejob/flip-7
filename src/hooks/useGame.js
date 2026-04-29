@@ -146,10 +146,44 @@ export function useGame(roomId, userId) {
   }, [gameState, pendingRoundEnd])
 
   const stay = useCallback(() => apply(round.stay), [apply])
+
+  // Freeze gets a deferred path so a self-freeze that ends the round can be
+  // paused behind the freeze modal — same pattern as the bust / Flip 7
+  // round-end deferrals. Other action kinds always commit immediately.
   const selectTarget = useCallback(
-    (targetId) => apply((s) => round.selectTarget(s, targetId)),
-    [apply],
+    async (targetId) => {
+      if (!roomId || pending || !gameState) return
+      const action = gameState.pendingAction
+      if (!action) return
+      if (action.kind !== 'freeze') {
+        await apply((s) => round.selectTarget(s, targetId))
+        return
+      }
+      setPending(true)
+      setError(null)
+      try {
+        const intermediate = round.selectTargetDeferred(gameState, targetId)
+        if (intermediate === gameState) return
+        const isSelfFreeze =
+          action.fromPlayerId === userId && targetId === userId
+        const ending = round.wouldEndRound(intermediate)
+        if (isSelfFreeze && ending) {
+          await writeState(intermediate)
+          setPendingRoundEnd(true)
+        } else {
+          const next = round.flushPostDraw(intermediate)
+          await writeState(next)
+        }
+      } catch (err) {
+        console.error('useGame: selectTarget freeze failed', err)
+        setError(err?.message ?? 'Action failed')
+      } finally {
+        setPending(false)
+      }
+    },
+    [roomId, gameState, pending, userId, writeState, apply],
   )
+
   const cancelPending = useCallback(() => apply(round.cancelPending), [apply])
 
   // During the initial-deal phase the dealer auto-deals one card to each

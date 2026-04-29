@@ -17,6 +17,8 @@ export function MyHand({
   player,
   bustedSnapshot,
   flip7Snapshot,
+  frozenSnapshot,
+  freezeFlashKey = 0,
   shakeKey = 0,
   round,
   phase = 'play',
@@ -33,6 +35,7 @@ export function MyHand({
   const cardsRef = useRef(null)
   const isBusted = player?.status === 'busted'
   const isFlip7 = !!flip7Snapshot
+  const isFrozen = player?.status === 'frozen'
 
   // When busted, render the snapshot taken before the bust (engine has cleared
   // the live hand) plus the duplicate that caused the bust at the end. When
@@ -43,7 +46,9 @@ export function MyHand({
     ? bustedSnapshot
     : isFlip7
       ? flip7Snapshot
-      : { numbers: player?.numbers ?? [], modifiers: player?.modifiers ?? [], secondChance: player?.secondChance ?? null, bustingIndex: -1 }
+      : isFrozen && frozenSnapshot
+        ? { ...frozenSnapshot, bustingIndex: -1 }
+        : { numbers: player?.numbers ?? [], modifiers: player?.modifiers ?? [], secondChance: player?.secondChance ?? null, bustingIndex: -1 }
   const numbers = display.numbers
   const modifiers = display.modifiers
   const secondChance = display.secondChance
@@ -61,6 +66,15 @@ export function MyHand({
   const canStay = numbers.length + modifiers.length > 0
   const canAct = isMyTurn && !hasPendingAction && !isDealing && player?.status === 'active'
 
+  // Blue glow flash on the container when freeze lands.
+  const [freezeGlow, setFreezeGlow] = useState(false)
+  useEffect(() => {
+    if (!freezeFlashKey) return
+    setFreezeGlow(true)
+    const t = setTimeout(() => setFreezeGlow(false), 500)
+    return () => clearTimeout(t)
+  }, [freezeFlashKey])
+
   // Red-flash + shake on the cards row when shakeKey bumps.
   const [flash, setFlash] = useState(false)
   useEffect(() => {
@@ -74,8 +88,16 @@ export function MyHand({
     ? '2.5px solid #FECACA'
     : isFlip7
       ? '2.5px solid #FCD34D'
-      : '2.5px solid #7DD3FC'
-  const containerBg = isBusted ? '#FFF5F5' : isFlip7 ? '#FFFBEB' : 'white'
+      : isFrozen
+        ? '2.5px solid #BFDBFE'
+        : '2.5px solid #7DD3FC'
+  const containerBg = isBusted
+    ? '#FFF5F5'
+    : isFlip7
+      ? '#FFFBEB'
+      : isFrozen
+        ? '#EFF6FF'
+        : 'white'
 
   // Golden pulse-twice on the container when Flip 7 lands.
   const flip7ContainerAnimate = isFlip7
@@ -91,16 +113,35 @@ export function MyHand({
       }
     : null
 
+  // Single blue pulse on the container when this player gets frozen.
+  const freezeContainerAnimate = freezeGlow
+    ? {
+        x: 0,
+        boxShadow: [
+          '0 0 0 0 rgba(147, 197, 253, 0)',
+          '0 0 0 4px #BFDBFE, 0 0 20px rgba(147, 197, 253, 0.4)',
+          '0 0 0 0 rgba(147, 197, 253, 0)',
+        ],
+      }
+    : null
+
+  const containerAnimate = flip7ContainerAnimate
+    ? flip7ContainerAnimate
+    : freezeContainerAnimate
+      ? freezeContainerAnimate
+      : shakeKey
+        ? { x: [0, -8, 8, -5, 5, 0] }
+        : { x: 0 }
+  const containerTransition = flip7ContainerAnimate
+    ? { duration: 0.6 }
+    : freezeContainerAnimate
+      ? { duration: 0.5 }
+      : { duration: 0.4 }
+
   return (
     <motion.div
-      animate={
-        flip7ContainerAnimate
-          ? flip7ContainerAnimate
-          : shakeKey
-            ? { x: [0, -8, 8, -5, 5, 0] }
-            : { x: 0 }
-      }
-      transition={flip7ContainerAnimate ? { duration: 0.6 } : { duration: 0.4 }}
+      animate={containerAnimate}
+      transition={containerTransition}
       style={{
         background: containerBg,
         border: containerBorder,
@@ -117,10 +158,23 @@ export function MyHand({
         <span
           style={{
             ...labelStyle,
-            color: isBusted ? '#7F1D1D' : isFlip7 ? '#92400E' : labelStyle.color,
+            color: isBusted
+              ? '#7F1D1D'
+              : isFlip7
+                ? '#92400E'
+                : isFrozen
+                  ? '#1D4ED8'
+                  : labelStyle.color,
           }}
         >
-          Your hand · {isBusted ? 'busted' : isFlip7 ? '🎉 flip 7!' : `${totalCards} cards`}
+          Your hand ·{' '}
+          {isBusted
+            ? 'busted'
+            : isFlip7
+              ? '🎉 flip 7!'
+              : isFrozen
+                ? 'frozen'
+                : `${totalCards} cards`}
         </span>
         <span
           style={{
@@ -132,6 +186,10 @@ export function MyHand({
         >
           {isBusted ? (
             <span style={{ color: '#DC2626', fontSize: 14 }}>0 pts</span>
+          ) : isFrozen ? (
+            <span style={{ color: '#0EA5E9', fontSize: 14 }}>
+              🔒 {frozenSnapshot ? calcRoundScore(frozenSnapshot) : 0} pts
+            </span>
           ) : (
             <>
               round:{' '}
@@ -227,6 +285,26 @@ export function MyHand({
             }}
           >
             💥 You busted this round
+          </div>
+        ) : isFrozen ? (
+          <div
+            style={{
+              flex: 1,
+              background: '#EFF6FF',
+              border: '2px solid #BFDBFE',
+              boxShadow: '0 4px 0 #BFDBFE',
+              borderRadius: 12,
+              padding: '9px',
+              textAlign: 'center',
+              color: '#1E3A8A',
+              fontFamily: "'Nunito', sans-serif",
+              fontWeight: 900,
+              fontSize: 13,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            🧊 You're frozen — points banked
           </div>
         ) : isFlip7 ? (
           <div
