@@ -124,7 +124,7 @@ export function Flip7Modal({ open, numbers = [], modifiers = [], onContinue }) {
                 margin: '0 0 14px',
               }}
             >
-              You collected all 7 unique cards!
+              You collected 7 unique cards!
             </p>
 
             <div

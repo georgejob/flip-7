@@ -16,12 +16,13 @@ after session 5:
 
 -on freeze player selection, show progress bar to give better insight to the local player on who to freeze
 -sometimes drawing 3 doesn't draw the full 3???
--when another player freezes you, it needs to be more apparent that i'm frozen. maybe some indication in the my your hand section
+-i think when you bust on a flip 3 when youre the last active player, the bust modal doesn't show up
+-(done)when another player freezes you, it needs to be more apparent that i'm frozen. maybe some indication in the my your hand section
 -(done)last active player busts freezes the game for everyone and the next round doesnt start. no bust modal shows up either
 -(done)bust modal sometimes doesn't show up? seems random but need to dig in to see on what conditions
 -(done)when a player busts, their bustedSnapshot will keep updating the last card with whatever card the current player draws
 -(done)it seems discard deck is getting reshuffled back into main deck after each round. i only want discard to get shuffled
--(done) when busting, add most recent card to hand to show which card busted 
+-(done) when busting, add most recent card to hand to show which card busted
 -(done)bust animation needed
 -(done)flip 7 animation needed
 -(done)last active player of round the modal isn't showing up because the new round is starting
