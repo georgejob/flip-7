@@ -1,4 +1,4 @@
-import { paletteForValue } from './cardColors'
+import { cardColorsFor } from './cardColors'
 import { getCardDetailLevel } from '../../hooks/useAdaptiveLayout'
 
 const CARD_W = 38
@@ -26,14 +26,13 @@ export function Card({ card, glow = false, style, width, height }) {
 export const CARD_DIMENSIONS = { width: CARD_W, height: CARD_H }
 
 function NumberCard({ value, glow, style, width, height }) {
-  const p = paletteForValue(value)
+  const c = cardColorsFor(value)
   const dynamic = width != null && height != null
   const w = width ?? CARD_W
   const h = height ?? CARD_H
   const detail = dynamic ? getCardDetailLevel(w) : 'full'
   const isWide = value >= 10
 
-  // Scaled typography. Center number is the dominant element on every level.
   const centerFontSize =
     detail === 'full'
       ? Math.max(12, Math.round(h * (isWide ? 0.34 : 0.42)))
@@ -42,99 +41,176 @@ function NumberCard({ value, glow, style, width, height }) {
         : detail === 'compact'
           ? Math.max(11, Math.round(h * (isWide ? 0.42 : 0.52)))
           : Math.max(10, Math.round(h * (isWide ? 0.48 : 0.6)))
-  const cornerFontSize = Math.max(7, Math.round(w * 0.22))
-  const innerW = Math.round(w * 0.62)
-  const innerH = Math.round(h * 0.6)
-  const radius = Math.max(4, Math.round(w * 0.18))
-  const innerRadius = Math.max(3, Math.round(w * 0.1))
+
+  // Pip dimensions track card width so they don't overflow at compact/minimal
+  // sizes. The 14px / 24px / 6px values in the spec are the full-size design.
+  const pipFontSize = Math.min(14, Math.max(8, Math.round(w * 0.22)))
+  const pipPadV = Math.max(1, Math.round(pipFontSize * 0.18))
+  const pipPadH = Math.max(3, Math.round(pipFontSize * 0.45))
+  const pipMinWidth = Math.max(14, Math.round(pipFontSize * 1.7))
+  const pipRadius = Math.max(3, Math.round(pipFontSize * 0.45))
+  const pipBorderWidth = w >= 44 ? 1.5 : 1
+  const pipOffset = Math.max(3, Math.round(w * 0.1))
+
+  const baseShadow = '0 4px 0 var(--shadow), 0 6px 18px rgba(0,0,0,0.10)'
+
+  const showBottomPip = detail === 'full'
+  const showSuit = detail === 'full' || detail === 'medium'
+
+  const cssVars = {
+    '--wash1': c.wash1,
+    '--wash2': c.wash2,
+    '--border': c.border,
+    '--shadow': c.shadow,
+    '--text': c.text,
+  }
+
+  const pipStyle = {
+    position: 'absolute',
+    background: 'rgba(255,255,255,0.92)',
+    border: `${pipBorderWidth}px solid var(--border)`,
+    borderRadius: pipRadius,
+    padding: `${pipPadV}px ${pipPadH}px`,
+    fontFamily: "'Nunito', sans-serif",
+    fontSize: pipFontSize,
+    fontWeight: 900,
+    color: 'var(--text)',
+    lineHeight: 1,
+    minWidth: pipMinWidth,
+    textAlign: 'center',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.14)',
+    zIndex: 4,
+  }
 
   return (
     <div
       style={{
+        ...cssVars,
         width: w,
         height: h,
-        borderRadius: radius,
-        border: `2.5px solid ${p.border}`,
-        background: p.bg,
-        boxShadow: glowShadow(glow) ?? `0 2px 0 ${p.border}`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        borderRadius: 14,
+        border: '2.5px solid var(--border)',
+        background: '#fff',
+        boxShadow: glowShadow(glow) ?? baseShadow,
         position: 'relative',
+        overflow: 'hidden',
         ...style,
       }}
     >
-      {(detail === 'full' || detail === 'medium') && (
+      <div
+        style={{
+          position: 'absolute',
+          width: '125%',
+          height: '125%',
+          borderRadius: '50%',
+          background: 'var(--wash1)',
+          top: '-30%',
+          left: '-16%',
+          filter: 'blur(14px)',
+          opacity: 0.65,
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          width: '90%',
+          height: '90%',
+          borderRadius: '50%',
+          background: 'var(--wash2)',
+          bottom: '-16%',
+          right: '-16%',
+          filter: 'blur(11px)',
+          opacity: 0.5,
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          width: '55%',
+          height: '55%',
+          borderRadius: '50%',
+          background: 'var(--wash1)',
+          bottom: '14%',
+          left: '-10%',
+          filter: 'blur(10px)',
+          opacity: 0.3,
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+
+      <div
+        style={{
+          position: 'absolute',
+          inset: 6,
+          border: '1.5px solid var(--border)',
+          borderRadius: 9,
+          opacity: 0.3,
+          pointerEvents: 'none',
+          zIndex: 1,
+        }}
+      />
+
+      <span style={{ ...pipStyle, top: pipOffset, left: pipOffset }}>{value}</span>
+
+      {showBottomPip && (
         <span
           style={{
-            position: 'absolute',
-            top: 3,
-            left: 4,
-            fontFamily: "'Nunito', sans-serif",
-            fontWeight: 900,
-            fontSize: cornerFontSize,
-            color: p.innerBorder,
-            lineHeight: 1,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
+            ...pipStyle,
+            bottom: pipOffset,
+            right: pipOffset,
+            transform: 'rotate(180deg)',
           }}
         >
           {value}
-          {detail === 'full' && (
-            <span style={{ fontSize: Math.round(cornerFontSize * 0.85) }}>✦</span>
-          )}
         </span>
       )}
 
-      {detail === 'compact' && (
+      {showSuit && (
         <span
           style={{
             position: 'absolute',
-            top: 2,
-            left: 3,
-            fontFamily: "'Nunito', sans-serif",
-            fontWeight: 900,
-            fontSize: cornerFontSize,
-            color: p.innerBorder,
+            top: 7,
+            right: 7,
+            fontSize: 12,
+            color: 'var(--border)',
+            opacity: 0.65,
+            zIndex: 4,
             lineHeight: 1,
+            pointerEvents: 'none',
           }}
         >
-          {value}
+          {c.suit}
         </span>
       )}
 
-      {(detail === 'full' || detail === 'medium') ? (
-        <div
-          style={{
-            width: innerW,
-            height: innerH,
-            borderRadius: innerRadius,
-            border: `2px solid ${p.innerBorder}`,
-            background: p.innerBg,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontFamily: "'Fredoka One', cursive",
-            fontSize: centerFontSize,
-            color: '#082F49',
-            lineHeight: 1,
-          }}
-        >
-          {value}
-        </div>
-      ) : (
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 3,
+          pointerEvents: 'none',
+        }}
+      >
         <span
           style={{
             fontFamily: "'Fredoka One', cursive",
             fontSize: centerFontSize,
-            color: '#082F49',
+            color: 'var(--text)',
+            textShadow: '1px 1px 0 rgba(255,255,255,0.7)',
             lineHeight: 1,
           }}
         >
           {value}
         </span>
-      )}
+      </div>
     </div>
   )
 }

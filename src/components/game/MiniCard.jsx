@@ -1,4 +1,4 @@
-import { paletteForValue } from './cardColors'
+import { cardColorsFor } from './cardColors'
 
 const MINI_W = 18
 const MINI_H = 26
@@ -16,28 +16,36 @@ export function MiniCard({ card, glow = false, style }) {
 }
 
 function Num({ value, glow, style }) {
-  const p = paletteForValue(value)
-  const wide = value >= 10
+  const c = cardColorsFor(value)
   return (
     <div
       style={{
         width: MINI_W,
         height: MINI_H,
         borderRadius: 4,
-        border: `1.5px solid ${p.border}`,
-        background: p.bg,
+        border: `1.5px solid ${c.border}`,
+        background: `linear-gradient(135deg, ${c.wash1}, ${c.wash2})`,
         boxShadow: glow ? GLOW : null,
-        color: '#082F49',
-        fontFamily: "'Nunito', sans-serif",
-        fontWeight: 900,
-        fontSize: wide ? 8 : 9,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         ...style,
       }}
     >
-      {value}
+      <span
+        style={{
+          background: 'rgba(255,255,255,0.88)',
+          borderRadius: 4,
+          padding: '1px 3px',
+          fontFamily: "'Nunito', sans-serif",
+          fontSize: 9,
+          fontWeight: 900,
+          color: c.text,
+          lineHeight: 1,
+        }}
+      >
+        {value}
+      </span>
     </div>
   )
 }
