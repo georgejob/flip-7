@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createRoom, joinRoom } from '../../game/supabase'
 import { PhoneFrame } from '../ui/PhoneFrame'
 import { Logo } from '../ui/Logo'
+import { PressableButton } from '../ui/PressableButton'
 import { CardFan } from './CardFan'
 
 const inputBase = {
@@ -31,7 +32,6 @@ const labelStyle = {
 const primaryButton = {
   background: '#0EA5E9',
   border: '3px solid #0369A1',
-  boxShadow: '0 5px 0 #0369A1',
   color: 'white',
   fontFamily: "'Nunito', sans-serif",
   fontWeight: 900,
@@ -46,7 +46,6 @@ const primaryButton = {
 const secondaryButton = {
   background: '#38BDF8',
   border: '3px solid #0284C7',
-  boxShadow: '0 5px 0 #0284C7',
   color: '#082F49',
   fontFamily: "'Nunito', sans-serif",
   fontWeight: 900,
@@ -61,7 +60,6 @@ const secondaryButton = {
 const disabledStyle = {
   background: '#E0F2FE',
   border: '3px solid #BAE6FD',
-  boxShadow: '0 5px 0 #BAE6FD',
   color: '#7DD3FC',
 }
 
@@ -163,17 +161,23 @@ export function Lobby({ onEnterRoom }) {
           />
         </div>
 
-        <button
-          type="button"
+        <PressableButton
           style={{
             ...primaryButton,
             ...(canCreate ? null : disabledStyle),
           }}
+          shadowDepth={5}
+          shadowColor={canCreate ? '#0369A1' : '#BAE6FD'}
+          pressScale={0.96}
+          ripple={canCreate}
+          rippleColor="rgba(255,255,255,0.25)"
+          releaseFlash={canCreate ? { color: 'rgba(255,255,255,0.35)', durationMs: 100 } : null}
+          soundProfile={canCreate ? 'primary' : 'none'}
           onClick={handleCreate}
           disabled={!canCreate}
         >
           Create room →
-        </button>
+        </PressableButton>
 
         <div
           style={{
@@ -211,17 +215,20 @@ export function Lobby({ onEnterRoom }) {
           />
         </div>
 
-        <button
-          type="button"
+        <PressableButton
           style={{
             ...secondaryButton,
             ...(canJoin ? null : disabledStyle),
           }}
+          shadowDepth={5}
+          shadowColor={canJoin ? '#0284C7' : '#BAE6FD'}
+          pressScale={0.97}
+          soundProfile={canJoin ? 'primary' : 'none'}
           onClick={handleJoin}
           disabled={!canJoin}
         >
           Join →
-        </button>
+        </PressableButton>
       </div>
 
       {error && (

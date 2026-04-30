@@ -13,6 +13,8 @@ import { Flip7Toast } from './Flip7Toast'
 import { FreezeModal } from './FreezeModal'
 import { FreezeToast } from './FreezeToast'
 import { Confetti } from './Confetti'
+import { PressableButton } from '../ui/PressableButton'
+import { useUiMuted } from '../../hooks/useUiSound'
 import {
   getCurrentPlayerId,
   targetableForPending,
@@ -25,6 +27,7 @@ const ROUND_END_SAFETY_MS = 10000
 
 export function GameBoard({ roomId, roomCode, onLeave }) {
   const userId = useCurrentUserId()
+  const [muted, setMuted] = useUiMuted()
   const {
     gameState,
     error,
@@ -372,9 +375,13 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
           flexShrink: 0,
         }}
       >
-        <button
-          type="button"
+        <PressableButton
           onClick={onLeave}
+          shadowDepth={2}
+          shadowColor="#7DD3FC"
+          pressScale={0.97}
+          soundProfile="small"
+          aria-label="Leave game"
           style={{
             background: 'white',
             border: '2px solid #7DD3FC',
@@ -384,11 +391,10 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
             fontFamily: "'Nunito', sans-serif",
             fontWeight: 900,
             fontSize: 11,
-            cursor: 'pointer',
           }}
         >
           ←
-        </button>
+        </PressableButton>
         <span
           style={{
             background: '#38BDF8',
@@ -430,6 +436,28 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
         >
           {deckLeft} cards left
         </span>
+        <PressableButton
+          onClick={() => setMuted(!muted)}
+          shadowDepth={2}
+          shadowColor="#7DD3FC"
+          pressScale={0.95}
+          soundProfile={muted ? 'none' : 'small'}
+          aria-label={muted ? 'Unmute sounds' : 'Mute sounds'}
+          aria-pressed={muted}
+          style={{
+            background: 'white',
+            border: '2px solid #7DD3FC',
+            borderRadius: 10,
+            padding: '4px 8px',
+            color: '#0284C7',
+            fontFamily: "'Nunito', sans-serif",
+            fontWeight: 900,
+            fontSize: 12,
+            lineHeight: 1,
+          }}
+        >
+          {muted ? '🔇' : '🔊'}
+        </PressableButton>
       </div>
 
       <div
@@ -632,25 +660,29 @@ function FinishedOverlay({ winnerName, onLeave }) {
         >
           {winnerName ?? 'Someone'} wins!
         </h2>
-        <button
-          type="button"
+        <PressableButton
           onClick={onLeave}
+          shadowDepth={4}
+          shadowColor="#0369A1"
+          pressScale={0.96}
+          ripple
+          rippleColor="rgba(255,255,255,0.25)"
+          releaseFlash={{ color: 'rgba(252, 211, 77, 0.45)', durationMs: 150 }}
+          soundProfile="primary"
           style={{
             marginTop: 12,
             background: '#0EA5E9',
             border: '3px solid #0369A1',
-            boxShadow: '0 4px 0 #0369A1',
             color: 'white',
             fontFamily: "'Nunito', sans-serif",
             fontWeight: 900,
             fontSize: 14,
             padding: '10px 20px',
             borderRadius: 12,
-            cursor: 'pointer',
           }}
         >
           Back to lobby
-        </button>
+        </PressableButton>
       </div>
     </div>
   )

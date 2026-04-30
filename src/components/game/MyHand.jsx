@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from './Card'
 import { CardBack } from './CardBack'
+import { PressableButton } from '../ui/PressableButton'
 import { useDynamicHandLayout } from '../../hooks/useAdaptiveLayout'
 import { calcRoundScore } from '../../game/engine'
 
@@ -625,50 +626,60 @@ export function MyHand({
           </div>
         ) : (
           <>
-            <button
-              type="button"
+            <PressableButton
               onClick={onHit}
               disabled={!canAct || pending}
+              shadowDepth={4}
+              shadowColor={canAct ? '#0369A1' : '#BAE6FD'}
+              pressScale={0.96}
+              ripple={canAct && !pending}
+              rippleColor="rgba(255,255,255,0.3)"
+              shake={canAct && !pending}
+              soundProfile={canAct && !pending ? 'hit' : 'none'}
               style={{
                 flex: 1,
                 background: canAct ? '#0EA5E9' : '#E0F2FE',
                 border: canAct ? '3px solid #0369A1' : '3px solid #BAE6FD',
-                boxShadow: canAct ? '0 4px 0 #0369A1' : '0 4px 0 #BAE6FD',
                 color: canAct ? 'white' : '#7DD3FC',
                 fontFamily: "'Nunito', sans-serif",
                 fontWeight: 900,
                 fontSize: 15,
                 padding: '9px',
                 borderRadius: 12,
-                cursor: canAct && !pending ? 'pointer' : 'not-allowed',
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
               }}
             >
               Hit
-            </button>
-            <button
-              type="button"
+            </PressableButton>
+            <PressableButton
               onClick={onStay}
               disabled={!canAct || !canStay || pending}
+              shadowDepth={4}
+              shadowColor={canAct && canStay ? '#34D399' : '#BAE6FD'}
+              pressScale={0.97}
+              releaseFlash={
+                canAct && canStay && !pending
+                  ? { color: 'rgba(232, 253, 242, 0.85)', durationMs: 150 }
+                  : null
+              }
+              soundProfile={canAct && canStay && !pending ? 'stay' : 'none'}
               style={{
                 flex: 1,
                 background: canAct && canStay ? '#A7F3D0' : '#E0F2FE',
                 border: canAct && canStay ? '3px solid #34D399' : '3px solid #BAE6FD',
-                boxShadow: canAct && canStay ? '0 4px 0 #34D399' : '0 4px 0 #BAE6FD',
                 color: canAct && canStay ? '#064E3B' : '#7DD3FC',
                 fontFamily: "'Nunito', sans-serif",
                 fontWeight: 900,
                 fontSize: 15,
                 padding: '9px',
                 borderRadius: 12,
-                cursor: canAct && canStay && !pending ? 'pointer' : 'not-allowed',
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
               }}
             >
               Stay ({score} pts)
-            </button>
+            </PressableButton>
           </>
         )}
       </div>

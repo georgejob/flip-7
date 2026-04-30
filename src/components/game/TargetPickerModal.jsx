@@ -1,3 +1,5 @@
+import { PressableButton } from '../ui/PressableButton'
+
 const KIND_LABEL = {
   freeze: { title: 'Freeze a player', sub: 'They bank their points and sit out the round.' },
   flipThree: { title: 'Flip Three', sub: 'Choose a player to draw 3 cards.' },
@@ -70,31 +72,38 @@ export function TargetPickerModal({ action, targets, onPick, onCancel }) {
             </div>
           )}
           {targets.map((t) => (
-            <button
+            <PressableButton
               key={t.id}
-              type="button"
               onClick={() => onPick(t.id)}
+              shadowDepth={3}
+              shadowColor="#0369A1"
+              pressScale={0.97}
+              ripple
+              rippleColor="rgba(255,255,255,0.25)"
+              soundProfile="primary"
               style={{
                 background: '#0EA5E9',
                 border: '2.5px solid #0369A1',
-                boxShadow: '0 3px 0 #0369A1',
                 color: 'white',
                 fontFamily: "'Nunito', sans-serif",
                 fontWeight: 900,
                 fontSize: 14,
                 padding: '10px 14px',
                 borderRadius: 12,
-                cursor: 'pointer',
+                justifyContent: 'flex-start',
                 textAlign: 'left',
               }}
             >
               {t.name}
-            </button>
+            </PressableButton>
           ))}
         </div>
-        <button
-          type="button"
+        <PressableButton
           onClick={onCancel}
+          shadowDepth={2}
+          shadowColor="#BAE6FD"
+          pressScale={0.97}
+          soundProfile="small"
           style={{
             marginTop: 12,
             width: '100%',
@@ -106,12 +115,11 @@ export function TargetPickerModal({ action, targets, onPick, onCancel }) {
             fontSize: 12,
             padding: '8px',
             borderRadius: 10,
-            cursor: 'pointer',
             textTransform: 'uppercase',
           }}
         >
           {targets.length === 0 ? 'Discard & continue' : 'Cancel (discard card)'}
-        </button>
+        </PressableButton>
       </div>
     </div>
   )

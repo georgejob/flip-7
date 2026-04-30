@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useRoomSession } from '../../hooks/useRoomSession'
 import { startGame } from '../../hooks/useGame'
 import { PhoneFrame } from '../ui/PhoneFrame'
 import { Logo } from '../ui/Logo'
+import { PressableButton } from '../ui/PressableButton'
 
 const TIPS = [
   "Flip 7 unique number cards and score an automatic 15 bonus points!",
@@ -37,7 +39,6 @@ const cardPanel = {
 const primaryButton = {
   background: '#0EA5E9',
   border: '3px solid #0369A1',
-  boxShadow: '0 5px 0 #0369A1',
   color: 'white',
   fontFamily: "'Nunito', sans-serif",
   fontWeight: 900,
@@ -52,7 +53,6 @@ const primaryButton = {
 const disabledButton = {
   background: '#E0F2FE',
   border: '3px solid #BAE6FD',
-  boxShadow: '0 5px 0 #BAE6FD',
   color: '#7DD3FC',
   fontFamily: "'Nunito', sans-serif",
   fontWeight: 900,
@@ -62,7 +62,6 @@ const disabledButton = {
   width: '100%',
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
-  cursor: 'default',
 }
 
 const badgeStyle = {
@@ -126,9 +125,12 @@ export function WaitingRoom({ roomId, roomCode, isHost, onLeave, onStart }) {
   return (
     <PhoneFrame>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <button
-          type="button"
+        <PressableButton
           onClick={onLeave}
+          shadowDepth={2}
+          shadowColor="#7DD3FC"
+          pressScale={0.97}
+          soundProfile="small"
           style={{
             background: 'white',
             border: '2px solid #7DD3FC',
@@ -140,11 +142,10 @@ export function WaitingRoom({ roomId, roomCode, isHost, onLeave, onStart }) {
             fontSize: 12,
             textTransform: 'uppercase',
             letterSpacing: '0.08em',
-            cursor: 'pointer',
           }}
         >
           ← Leave
-        </button>
+        </PressableButton>
         <span style={badgeStyle}>{loading ? 'Connecting…' : 'Lobby'}</span>
       </div>
 
@@ -173,13 +174,15 @@ export function WaitingRoom({ roomId, roomCode, isHost, onLeave, onStart }) {
           >
             {roomCode}
           </div>
-          <button
-            type="button"
+          <PressableButton
             onClick={handleCopy}
+            shadowDepth={3}
+            shadowColor={copied ? '#6EE7B7' : '#38BDF8'}
+            pressScale={0.95}
+            soundProfile="small"
             style={{
               background: copied ? '#A7F3D0' : '#BAE6FD',
               border: `2px solid ${copied ? '#6EE7B7' : '#38BDF8'}`,
-              boxShadow: `0 3px 0 ${copied ? '#6EE7B7' : '#38BDF8'}`,
               borderRadius: 10,
               padding: '8px 10px',
               color: '#082F49',
@@ -188,12 +191,23 @@ export function WaitingRoom({ roomId, roomCode, isHost, onLeave, onStart }) {
               fontSize: 11,
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
-              cursor: 'pointer',
+              minWidth: 84,
             }}
             aria-label="Copy room code"
           >
-            {copied ? '✓ Copied' : 'Copy'}
-          </button>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={copied ? 'copied' : 'copy'}
+                initial={{ y: -4, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 4, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                style={{ display: 'inline-block' }}
+              >
+                {copied ? 'copied ✓' : 'copy ↗'}
+              </motion.span>
+            </AnimatePresence>
+          </PressableButton>
         </div>
         <p style={{ margin: '12px 0 0', fontSize: 12, fontWeight: 800, color: '#0369A1' }}>
           Share this code with friends
@@ -303,18 +317,35 @@ export function WaitingRoom({ roomId, roomCode, isHost, onLeave, onStart }) {
       )}
 
       {isHost ? (
-        <button
-          type="button"
-          onClick={handleStart}
-          disabled={starting || players.length < 1}
-          style={starting || players.length < 1 ? disabledButton : primaryButton}
-        >
-          {starting ? 'Starting…' : 'Start game →'}
-        </button>
+        (() => {
+          const startDisabled = starting || players.length < 1
+          return (
+            <PressableButton
+              onClick={handleStart}
+              disabled={startDisabled}
+              shadowDepth={5}
+              shadowColor={startDisabled ? '#BAE6FD' : '#0369A1'}
+              pressScale={0.96}
+              ripple={!startDisabled}
+              rippleColor="rgba(255,255,255,0.25)"
+              releaseFlash={!startDisabled ? { color: 'rgba(255,255,255,0.35)', durationMs: 100 } : null}
+              soundProfile={startDisabled ? 'none' : 'primary'}
+              style={startDisabled ? disabledButton : primaryButton}
+            >
+              {starting ? 'Starting…' : 'Start game →'}
+            </PressableButton>
+          )
+        })()
       ) : (
-        <button type="button" disabled style={disabledButton}>
+        <PressableButton
+          disabled
+          shadowDepth={5}
+          shadowColor="#BAE6FD"
+          soundProfile="none"
+          style={disabledButton}
+        >
           Waiting for host…
-        </button>
+        </PressableButton>
       )}
     </PhoneFrame>
   )

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { PressableButton } from '../ui/PressableButton'
 
 const COUNT_UP_MS = 600
 
@@ -157,27 +158,29 @@ export function FreezeModal({
               </div>
             )}
 
-            <button
-              type="button"
+            <PressableButton
               onClick={onContinue}
+              shadowDepth={4}
+              shadowColor="#0369A1"
+              pressScale={0.96}
+              releaseFlash={{ color: 'rgba(191, 219, 254, 0.55)', durationMs: 150 }}
+              soundProfile="primary"
               style={{
                 width: '100%',
                 background: '#0EA5E9',
                 border: '3px solid #0369A1',
-                boxShadow: '0 4px 0 #0369A1',
                 color: 'white',
                 fontFamily: "'Nunito', sans-serif",
                 fontWeight: 900,
                 fontSize: 15,
                 padding: '10px',
                 borderRadius: 12,
-                cursor: 'pointer',
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
               }}
             >
               Continue
-            </button>
+            </PressableButton>
           </motion.div>
         </motion.div>
       )}
