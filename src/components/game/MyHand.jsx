@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from './Card'
+import { CardBack } from './CardBack'
 import { useDynamicHandLayout } from '../../hooks/useAdaptiveLayout'
 import { calcRoundScore } from '../../game/engine'
 
@@ -11,6 +13,73 @@ const labelStyle = {
   textTransform: 'uppercase',
   letterSpacing: '0.12em',
   color: '#0284C7',
+}
+
+const FLIGHT_DURATION = 0.42 // seconds
+const FLIP_DELAY = 0.21 // seconds — flip starts at midpoint
+const FLIP_DURATION = 0.21 // seconds
+const BOUNCE_MS = 320
+
+// A face-down → face-up card that arcs from the deck position into its
+// landing slot in the hand. Rendered into document.body via portal so it
+// flies above any clipping ancestors.
+function FlyingCard({ from, to, card, width, height, onComplete }) {
+  return (
+    <motion.div
+      initial={{ x: from.x, y: from.y, opacity: 1 }}
+      animate={{ x: to.x, y: to.y }}
+      transition={{
+        duration: FLIGHT_DURATION,
+        x: { ease: [0.25, 0.46, 0.45, 0.94] },
+        y: { ease: [0.55, 0.05, 0.7, 0.95] },
+      }}
+      onAnimationComplete={onComplete}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width,
+        height,
+        pointerEvents: 'none',
+        zIndex: 9999,
+        perspective: 600,
+      }}
+    >
+      <motion.div
+        initial={{ rotateY: 0 }}
+        animate={{ rotateY: 180 }}
+        transition={{ delay: FLIP_DELAY, duration: FLIP_DURATION, ease: 'linear' }}
+        style={{
+          width: '100%',
+          height: '100%',
+          position: 'relative',
+          transformStyle: 'preserve-3d',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
+          }}
+        >
+          <CardBack width={width} height={height} />
+        </div>
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)',
+          }}
+        >
+          <Card card={card} width={width} height={height} />
+        </div>
+      </motion.div>
+    </motion.div>
+  )
 }
 
 export function MyHand({
@@ -27,21 +96,20 @@ export function MyHand({
   waitingForName,
   hasPendingAction,
   newestCardKey,
+  localDrawAt = 0,
+  localDrawnCard = null,
+  onDrawAnimated,
   onHit,
   onStay,
   pending,
 }) {
   const isDealing = phase === 'initialDeal'
   const cardsRef = useRef(null)
+  const modifiersRef = useRef(null)
   const isBusted = player?.status === 'busted'
   const isFlip7 = !!flip7Snapshot
   const isFrozen = player?.status === 'frozen'
 
-  // When busted, render the snapshot taken before the bust (engine has cleared
-  // the live hand) plus the duplicate that caused the bust at the end. When
-  // the local player flips 7, the engine has also cleared the hand — the
-  // snapshot lets us keep showing the 7 cards while the celebration runs.
-  // Both snapshots are computed in GameBoard.
   const display = isBusted && bustedSnapshot
     ? bustedSnapshot
     : isFlip7
@@ -57,10 +125,128 @@ export function MyHand({
 
   const { positions, cardWidth, cardHeight } = useDynamicHandLayout(cardsRef, totalCards)
 
-  // Score for the Stay button — only meaningful while the player is active.
   const score = player && !isBusted ? calcRoundScore(player) : 0
   const canStay = numbers.length + modifiers.length > 0
-  const canAct = isMyTurn && !hasPendingAction && !isDealing && player?.status === 'active'
+
+  // Flying-card animation state. The flight is fully owned by MyHand: we
+  // detect new draws via `localDrawAt`, render a portal-mounted clone that
+  // travels from the deck count to the card's landing slot, hide the real
+  // card while the clone is in flight, then drop the clone and let the real
+  // card spring into place.
+  const lastProcessedDrawAtRef = useRef(localDrawAt)
+  const prevDisplayRef = useRef({
+    numbers: numbers.length,
+    modifiers: modifiers.length,
+    secondChance: !!secondChance,
+  })
+  const [flying, setFlying] = useState(null)
+  const [hideKey, setHideKey] = useState(null)
+  const [bounceKey, setBounceKey] = useState(null)
+
+  useLayoutEffect(() => {
+    if (localDrawAt && localDrawAt !== lastProcessedDrawAtRef.current) {
+      lastProcessedDrawAtRef.current = localDrawAt
+      const cur = {
+        numbers: numbers.length,
+        modifiers: modifiers.length,
+        secondChance: !!secondChance,
+      }
+      const prev = prevDisplayRef.current
+
+      let target = null
+      if (cur.numbers > prev.numbers && cur.numbers > 0) {
+        const idx = cur.numbers - 1
+        target = { type: 'number', key: `n-${idx}-${numbers[idx].value}`, index: idx }
+      } else if (cur.modifiers > prev.modifiers && cur.modifiers > 0) {
+        const idx = cur.modifiers - 1
+        target = { type: 'modifier', key: `mod-${idx}`, index: idx }
+      } else if (cur.secondChance && !prev.secondChance) {
+        target = { type: 'second', key: 'second-chance', slot: cur.modifiers }
+      }
+
+      const fail = () => onDrawAnimated?.(localDrawAt)
+
+      if (!target || flying) {
+        fail()
+      } else {
+        const deckEl = document.querySelector('[data-deck-count]')
+        if (!deckEl) {
+          fail()
+        } else {
+          const deckRect = deckEl.getBoundingClientRect()
+          let toX = null
+          let toY = null
+          if (target.type === 'number') {
+            const rect = cardsRef.current?.getBoundingClientRect()
+            if (rect) {
+              toX = rect.left + (positions[target.index] ?? 0)
+              toY = rect.top + 4
+            }
+          } else {
+            const rect = modifiersRef.current?.getBoundingClientRect()
+            if (rect) {
+              const slot = target.type === 'modifier' ? target.index : target.slot
+              toX = rect.left + slot * (cardWidth + 6)
+              toY = rect.top
+            }
+          }
+          if (toX == null || toY == null) {
+            fail()
+          } else {
+            setFlying({
+              from: {
+                x: deckRect.left + (deckRect.width - cardWidth) / 2,
+                y: deckRect.top + (deckRect.height - cardHeight) / 2,
+              },
+              to: { x: toX, y: toY },
+              card: localDrawnCard,
+              width: cardWidth,
+              height: cardHeight,
+              at: localDrawAt,
+              landKey: target.key,
+            })
+            setHideKey(target.key)
+          }
+        }
+      }
+    }
+    prevDisplayRef.current = {
+      numbers: numbers.length,
+      modifiers: modifiers.length,
+      secondChance: !!secondChance,
+    }
+  }, [
+    localDrawAt,
+    localDrawnCard,
+    numbers,
+    modifiers,
+    secondChance,
+    positions,
+    cardWidth,
+    cardHeight,
+    onDrawAnimated,
+    flying,
+  ])
+
+  const handleFlightComplete = () => {
+    if (!flying) return
+    const { at, landKey } = flying
+    setFlying(null)
+    setHideKey(null)
+    setBounceKey(landKey)
+    onDrawAnimated?.(at)
+  }
+
+  useEffect(() => {
+    if (!bounceKey) return
+    const t = setTimeout(() => setBounceKey(null), BOUNCE_MS)
+    return () => clearTimeout(t)
+  }, [bounceKey])
+
+  // Disable Hit while a card is in flight so a second press can't fire a
+  // parallel animation.
+  const isAnimating = !!flying
+  const canAct = isMyTurn && !hasPendingAction && !isDealing && player?.status === 'active' && !isAnimating
 
   // Blue glow flash on the container when freeze lands.
   const [freezeGlow, setFreezeGlow] = useState(false)
@@ -95,7 +281,6 @@ export function MyHand({
         ? '#EFF6FF'
         : 'white'
 
-  // Golden pulse-twice on the container when Flip 7 lands.
   const flip7ContainerAnimate = isFlip7
     ? {
         x: 0,
@@ -109,7 +294,6 @@ export function MyHand({
       }
     : null
 
-  // Single blue pulse on the container when this player gets frozen.
   const freezeContainerAnimate = freezeGlow
     ? {
         x: 0,
@@ -197,6 +381,7 @@ export function MyHand({
 
       {(modifiers.length > 0 || secondChance) && (
         <div
+          ref={modifiersRef}
           style={{
             display: 'flex',
             gap: 6,
@@ -204,10 +389,58 @@ export function MyHand({
             opacity: isBusted ? 0.5 : 1,
           }}
         >
-          {modifiers.map((m, i) => (
-            <Card key={`mod-${i}`} card={m} width={cardWidth} height={cardHeight} />
-          ))}
-          {secondChance && <Card card={secondChance} width={cardWidth} height={cardHeight} />}
+          {modifiers.map((m, i) => {
+            const key = `mod-${i}`
+            const isHidden = key === hideKey
+            const isBouncing = key === bounceKey
+            return (
+              <motion.div
+                key={key}
+                initial={false}
+                animate={
+                  isHidden
+                    ? { opacity: 0, scale: 1, y: 0 }
+                    : isBouncing
+                      ? { opacity: 1, scale: [1.08, 1], y: [-6, 0] }
+                      : { opacity: 1, scale: 1, y: 0 }
+                }
+                transition={
+                  isBouncing
+                    ? { duration: 0.32, ease: [0.34, 1.16, 0.64, 1] }
+                    : { duration: 0.12 }
+                }
+                style={{ lineHeight: 0 }}
+              >
+                <Card card={m} width={cardWidth} height={cardHeight} />
+              </motion.div>
+            )
+          })}
+          {secondChance && (() => {
+            const key = 'second-chance'
+            const isHidden = key === hideKey
+            const isBouncing = key === bounceKey
+            return (
+              <motion.div
+                key={key}
+                initial={false}
+                animate={
+                  isHidden
+                    ? { opacity: 0, scale: 1, y: 0 }
+                    : isBouncing
+                      ? { opacity: 1, scale: [1.08, 1], y: [-6, 0] }
+                      : { opacity: 1, scale: 1, y: 0 }
+                }
+                transition={
+                  isBouncing
+                    ? { duration: 0.32, ease: [0.34, 1.16, 0.64, 1] }
+                    : { duration: 0.12 }
+                }
+                style={{ lineHeight: 0 }}
+              >
+                <Card card={secondChance} width={cardWidth} height={cardHeight} />
+              </motion.div>
+            )
+          })()}
         </div>
       )}
 
@@ -228,25 +461,52 @@ export function MyHand({
             const isBusting = isBusted && i === bustingIndex
             const isNewest = !isBusted && key === newestCardKey
             const glow = isBusting ? 'red' : isNewest
-            // The dup card sits on top in the busted state so the red glow
-            // is fully visible above neighbouring cards.
             const z = isBusting ? 200 : isNewest ? 100 : i
-            // Faded for the rest of the hand, but the busting card stays
-            // fully opaque so it remains visually identifiable.
             const cardOpacity = isBusted && !isBusting ? 0.5 : 1
-            const animateProps = isFlip7
-              ? { x: 0, y: [0, -4, 0], opacity: 1, filter: 'none' }
-              : flash
-                ? { x: 0, y: 0, opacity: cardOpacity, filter: 'sepia(1) hue-rotate(-50deg) saturate(4)' }
-                : { x: 0, y: 0, opacity: cardOpacity, filter: 'none' }
-            const transitionProps = isFlip7
-              ? { delay: i * 0.08, duration: 0.5, y: { times: [0, 0.5, 1] } }
-              : { type: 'spring', stiffness: 280, damping: 22 }
+            const isHidden = key === hideKey
+            const isBouncing = key === bounceKey
+
+            let initialProps
+            let animateProps
+            let transitionProps
+            if (isHidden) {
+              // The flying card is in flight; keep this slot invisible so
+              // there's no flash of the real card behind the clone.
+              initialProps = { opacity: 0 }
+              animateProps = { opacity: 0 }
+              transitionProps = { duration: 0 }
+            } else if (isBouncing) {
+              // Card just landed — overshoot then settle. Keyframe arrays let
+              // framer animate scale 1.08→1 and y -6→0 even though the slot
+              // was already mounted (with opacity:0) during the flight.
+              initialProps = false
+              animateProps = {
+                scale: [1.08, 1],
+                y: [-6, 0],
+                opacity: cardOpacity,
+                x: 0,
+                filter: 'none',
+              }
+              transitionProps = { duration: 0.32, ease: [0.34, 1.16, 0.64, 1] }
+            } else if (isFlip7) {
+              initialProps = { x: 10, y: 20, opacity: 0 }
+              animateProps = { x: 0, y: [0, -4, 0], opacity: 1, filter: 'none' }
+              transitionProps = { delay: i * 0.08, duration: 0.5, y: { times: [0, 0.5, 1] } }
+            } else if (flash) {
+              initialProps = { x: 10, y: 20, opacity: 0 }
+              animateProps = { x: 0, y: 0, opacity: cardOpacity, filter: 'sepia(1) hue-rotate(-50deg) saturate(4)' }
+              transitionProps = { type: 'spring', stiffness: 280, damping: 22 }
+            } else {
+              initialProps = { x: 10, y: 20, opacity: 0 }
+              animateProps = { x: 0, y: 0, opacity: cardOpacity, filter: 'none' }
+              transitionProps = { type: 'spring', stiffness: 280, damping: 22 }
+            }
+
             return (
               <motion.div
                 key={key}
                 layout
-                initial={{ x: 10, y: 20, opacity: 0 }}
+                initial={initialProps}
                 animate={animateProps}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={transitionProps}
@@ -412,6 +672,18 @@ export function MyHand({
           </>
         )}
       </div>
+      {flying && typeof document !== 'undefined' &&
+        createPortal(
+          <FlyingCard
+            from={flying.from}
+            to={flying.to}
+            card={flying.card}
+            width={flying.width}
+            height={flying.height}
+            onComplete={handleFlightComplete}
+          />,
+          document.body,
+        )}
     </motion.div>
   )
 }

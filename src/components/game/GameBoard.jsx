@@ -37,6 +37,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
     flushPendingRoundEnd,
   } = useGame(roomId, userId)
   const [newestCardKey, setNewestCardKey] = useState(null)
+  const [animatedDrawAt, setAnimatedDrawAt] = useState(0) // last lastDrawn.at whose flying-card animation has landed
   const [bustModal, setBustModal] = useState(null) // { card } | null
   const [saveModal, setSaveModal] = useState(null) // { card } | null
   const [flip7Modal, setFlip7Modal] = useState(null) // { card } | null — local player's flip-7
@@ -77,11 +78,14 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
   }, [me])
 
   // Newest-card glow tracking for the local player's hand. The newest is the
-  // last number card in `me.numbers`. Clear after 1.5s.
+  // last number card in `me.numbers`. Clear after 1.5s. Gated on the
+  // flying-card animation having landed so the glow is visible on the real
+  // card rather than wasted while the card is in flight.
   useEffect(() => {
     if (!me) return
     if (!gameState?.lastDrawn) return
     if (gameState.lastDrawn.playerId !== userId) return
+    if (gameState.lastDrawn.at > animatedDrawAt) return
     const card = gameState.lastDrawn.card
     if (card?.type !== 'number') return
     const i = me.numbers.length - 1
@@ -90,7 +94,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
     setNewestCardKey(key)
     const t = setTimeout(() => setNewestCardKey(null), 1500)
     return () => clearTimeout(t)
-  }, [gameState?.lastDrawn, me, userId])
+  }, [gameState?.lastDrawn, me, userId, animatedDrawAt])
 
   // Bust / save event detection. Each `lastDrawn.at` value represents a single
   // draw event; we track the last one we've reacted to so the same event
@@ -105,6 +109,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
     if (!ld || !userId) return
     if (ld.playerId !== userId) return
     if (ld.at === lastEventAtRef.current) return
+    if (ld.at > animatedDrawAt) return // wait for the flying-card animation to land
     lastEventAtRef.current = ld.at
 
     if (ld.result === 'busted') {
@@ -121,7 +126,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
       setConfettiActive(true)
       setFlip7Modal({ card: ld.card })
     }
-  }, [gameState?.lastDrawn, userId])
+  }, [gameState?.lastDrawn, userId, animatedDrawAt])
 
   // Other-player flip-7 detection — fires the toast on non-local clients.
   useEffect(() => {
@@ -415,6 +420,7 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
           {turnText}
         </span>
         <span
+          data-deck-count="true"
           style={{
             color: '#BAE6FD',
             fontFamily: "'Nunito', sans-serif",
@@ -502,6 +508,13 @@ export function GameBoard({ roomId, roomCode, onLeave }) {
         waitingForName={currentPlayerName}
         hasPendingAction={!!gameState?.pendingAction}
         newestCardKey={newestCardKey}
+        localDrawAt={
+          gameState?.lastDrawn?.playerId === userId ? gameState.lastDrawn.at : 0
+        }
+        localDrawnCard={
+          gameState?.lastDrawn?.playerId === userId ? gameState.lastDrawn.card : null
+        }
+        onDrawAnimated={setAnimatedDrawAt}
         onHit={hit}
         onStay={stay}
         pending={pending}
