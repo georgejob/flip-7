@@ -25,7 +25,11 @@
       "Bash(curl -s -o /dev/null -w \"useGame: %{http_code}\\\\n\" http://localhost:5174/src/hooks/useGame.js)",
       "Bash(npx eslint *)",
       "Bash(grep -A1 -E \"FreezeModal\\\\.jsx$|FreezeToast\\\\.jsx$|GameBoard\\\\.jsx$|MyHand\\\\.jsx$\")",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(grep -B1 -A2 -E \"Card\\\\.jsx$|MiniCard\\\\.jsx$|cardColors\\\\.js$\")",
+      "Bash(npx vite *)",
+      "Bash(npx vitest *)",
+      "Bash(awk '/MyHand.jsx/,/^C:|^$/ {print}')"
     ]
   }
 }

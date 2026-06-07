@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CARD_DIMENSIONS } from './Card'
+import { PressableButton } from '../ui/PressableButton'
 import { useAdaptiveLayout } from '../../hooks/useAdaptiveLayout'
 
 const COUNT_UP_MS = 800
@@ -124,7 +125,7 @@ export function Flip7Modal({ open, numbers = [], modifiers = [], onContinue }) {
                 margin: '0 0 14px',
               }}
             >
-              You collected all 7 unique cards!
+              You collected 7 unique cards!
             </p>
 
             <div
@@ -190,27 +191,29 @@ export function Flip7Modal({ open, numbers = [], modifiers = [], onContinue }) {
               </div>
             </motion.div>
 
-            <button
-              type="button"
+            <PressableButton
               onClick={onContinue}
+              shadowDepth={4}
+              shadowColor="#0369A1"
+              pressScale={0.96}
+              releaseFlash={{ color: 'rgba(252, 211, 77, 0.45)', durationMs: 150 }}
+              soundProfile="primary"
               style={{
                 width: '100%',
                 background: '#0EA5E9',
                 border: '3px solid #0369A1',
-                boxShadow: '0 4px 0 #0369A1',
                 color: 'white',
                 fontFamily: "'Nunito', sans-serif",
                 fontWeight: 900,
                 fontSize: 15,
                 padding: '10px',
                 borderRadius: 12,
-                cursor: 'pointer',
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
               }}
             >
               Continue
-            </button>
+            </PressableButton>
           </motion.div>
         </motion.div>
       )}

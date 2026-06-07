@@ -1,4 +1,5 @@
 import { Component } from 'react'
+import { PressableButton } from './PressableButton'
 
 export class ErrorBoundary extends Component {
   constructor(props) {
@@ -45,25 +46,28 @@ export class ErrorBoundary extends Component {
         >
           {message}
         </pre>
-        <button
-          type="button"
+        <PressableButton
           onClick={() => this.setState({ error: null })}
+          shadowDepth={5}
+          shadowColor="#0369A1"
+          pressScale={0.96}
+          ripple
+          rippleColor="rgba(255,255,255,0.25)"
+          soundProfile="primary"
           style={{
             marginTop: 16,
             background: '#0EA5E9',
             border: '3px solid #0369A1',
-            boxShadow: '0 5px 0 #0369A1',
             color: 'white',
             fontFamily: "'Nunito', sans-serif",
             fontWeight: 900,
             fontSize: 14,
             padding: '10px 16px',
             borderRadius: 12,
-            cursor: 'pointer',
           }}
         >
           Reload
-        </button>
+        </PressableButton>
       </div>
     )
   }
